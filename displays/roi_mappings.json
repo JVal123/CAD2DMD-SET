@@ -1,0 +1,672 @@
+{
+    "metronome": [
+        {
+            "image": "BEAT.jpg",
+            "#roi": 1,
+            "dictionaries": [
+                "metronome"
+            ],
+            "mode": "BEAT RHYTHM",
+            "labels": {
+                "measurement_type": [
+                    "TEMPO"
+                ],
+                "unit": [
+                    "BPM"
+                ]
+            },
+            "rois": [
+                [
+                    244,
+                    49,
+                    160,
+                    105
+                ]
+            ]
+        },
+        {
+            "image": "VOLUME.jpg",
+            "#roi": 1,
+            "dictionaries": [
+                "metronome"
+            ],
+            "mode": "VOLUME",
+            "labels": {
+                "measurement_type": [
+                    "TEMPO"
+                ],
+                "unit": [
+                    "BPM"
+                ]
+            },
+            "rois": [
+                [
+                    270,
+                    51,
+                    176,
+                    113
+                ]
+            ]
+        },
+        {
+            "image": "TEMPO.jpg",
+            "#roi": 1,
+            "dictionaries": [
+                "metronome"
+            ],
+            "mode": "TEMPO",
+            "labels": {
+                "measurement_type": [
+                    "TEMPO"
+                ],
+                "unit": [
+                    "BPM"
+                ]
+            },
+            "rois": [
+                [
+                    229,
+                    47,
+                    151,
+                    100
+                ]
+            ]
+        }
+    ],
+    "multimeter": [
+        {
+            "image": "IMG_20250429_143634.jpg",
+            "#roi": 1,
+            "dictionaries": [
+                "multimeter_range_1000"
+            ],
+            "mode": "DC Voltage V",
+            "labels": {
+                "measurement_type": [
+                    "DC Voltage"
+                ],
+                "unit": [
+                    "V"
+                ]
+            },
+            "rois": [
+                [
+                    101,
+                    227,
+                    883,
+                    314
+                ]
+            ]
+        },
+        {
+            "image": "IMG_20250429_143817.jpg",
+            "#roi": 1,
+            "dictionaries": [
+                "multimeter_range_600"
+            ],
+            "mode": "DC Voltage mV",
+            "labels": {
+                "measurement_type": [
+                    "DC Voltage"
+                ],
+                "unit": [
+                    "mV"
+                ]
+            },
+            "rois": [
+                [
+                    92,
+                    211,
+                    803,
+                    286
+                ]
+            ]
+        },
+        {
+            "image": "IMG_20250429_143853.jpg",
+            "#roi": 2,
+            "dictionaries": [
+                "multimeter_unilateral_range_1000",
+                "multimeter_duty"
+            ],
+            "mode": "Frequency Hz",
+            "labels": {
+                "measurement_type": [
+                    "Frequency",
+                    "Duty"
+                ],
+                "unit": [
+                    "Hz",
+                    "%"
+                ]
+            },
+            "rois": [
+                [
+                    92,
+                    225,
+                    901,
+                    329
+                ],
+                [
+                    422,
+                    10,
+                    452,
+                    149
+                ]
+            ]
+        },
+        {
+            "image": "IMG_20250429_143919.jpg",
+            "#roi": 1,
+            "dictionaries": [
+                "multimeter_unilateral_range_60"
+            ],
+            "mode": "Resistance M\u03a9",
+            "labels": {
+                "measurement_type": [
+                    "Resistance"
+                ],
+                "unit": [
+                    "M\u03a9"
+                ]
+            },
+            "rois": [
+                [
+                    233,
+                    220,
+                    475,
+                    291
+                ]
+            ]
+        },
+        {
+            "image": "IMG_20250429_143955.jpg",
+            "#roi": 1,
+            "dictionaries": [
+                "multimeter_unilateral_range_1000"
+            ],
+            "mode": "Capacitance nF",
+            "labels": {
+                "measurement_type": [
+                    "Capacitance"
+                ],
+                "unit": [
+                    "nF"
+                ]
+            },
+            "rois": [
+                [
+                    96,
+                    210,
+                    831,
+                    300
+                ]
+            ]
+        },
+        {
+            "image": "IMG_20250429_144031.jpg",
+            "#roi": 2,
+            "dictionaries": [
+                "multimeter_temperature celsius",
+                "multimeter_temperature farenheit"
+            ],
+            "mode": "Temperature",
+            "labels": {
+                "measurement_type": [
+                    "Temperature"
+                ],
+                "unit": [
+                    "\u00baC",
+                    "\u00baF"
+                ]
+            },
+            "rois": [
+                [
+                    95,
+                    220,
+                    834,
+                    290
+                ],
+                [
+                    467,
+                    22,
+                    340,
+                    128
+                ]
+            ]
+        },
+        {
+            "image": "IMG_20250429_144117.jpg",
+            "#roi": 1,
+            "dictionaries": [
+                "multimeter_range_600"
+            ],
+            "mode": "DC Current \u00b5A",
+            "labels": {
+                "measurement_type": [
+                    "DC Current"
+                ],
+                "unit": [
+                    "\u00b5A"
+                ]
+            },
+            "rois": [
+                [
+                    106,
+                    216,
+                    817,
+                    288
+                ]
+            ]
+        },
+        {
+            "image": "IMG_20250429_144157.jpg",
+            "#roi": 1,
+            "dictionaries": [
+                "multimeter_range_600"
+            ],
+            "mode": "DC Current mA",
+            "labels": {
+                "measurement_type": [
+                    "DC Current"
+                ],
+                "unit": [
+                    "mA"
+                ]
+            },
+            "rois": [
+                [
+                    101,
+                    213,
+                    804,
+                    293
+                ]
+            ]
+        },
+        {
+            "image": "IMG_20250429_144243.jpg",
+            "#roi": 1,
+            "dictionaries": [
+                "multimeter_range_10"
+            ],
+            "mode": "DC Current A",
+            "labels": {
+                "measurement_type": [
+                    "DC Current"
+                ],
+                "unit": [
+                    "A"
+                ]
+            },
+            "rois": [
+                [
+                    106,
+                    224,
+                    857,
+                    317
+                ]
+            ]
+        },
+        {
+            "image": "IMG_20250429_144354.jpg",
+            "#roi": 2,
+            "dictionaries": [
+                "multimeter_range_600",
+                "multimeter_unilateral_range_1000"
+            ],
+            "mode": "AC Voltage mV",
+            "labels": {
+                "measurement_type": [
+                    "AC Voltage",
+                    "Frequency"
+                ],
+                "unit": [
+                    "mV",
+                    "Hz"
+                ]
+            },
+            "rois": [
+                [
+                    98,
+                    215,
+                    843,
+                    301
+                ],
+                [
+                    433,
+                    13,
+                    393,
+                    132
+                ]
+            ]
+        },
+        {
+            "image": "IMG_20250429_144704.jpg",
+            "#roi": 2,
+            "dictionaries": [
+                "multimeter_range_750",
+                "multimeter_unilateral_range_1000"
+            ],
+            "mode": "AC Voltage V",
+            "labels": {
+                "measurement_type": [
+                    "AC Voltage",
+                    "Frequency"
+                ],
+                "unit": [
+                    "V",
+                    "Hz"
+                ]
+            },
+            "rois": [
+                [
+                    110,
+                    227,
+                    874,
+                    305
+                ],
+                [
+                    399,
+                    25,
+                    452,
+                    142
+                ]
+            ]
+        },
+        {
+            "image": "IMG_20250429_144422.jpg",
+            "#roi": 2,
+            "dictionaries": [
+                "multimeter_range_600",
+                "multimeter_unilateral_range_1000"
+            ],
+            "mode": "AC Current \u00b5A",
+            "labels": {
+                "measurement_type": [
+                    "AC Current",
+                    "Frequency"
+                ],
+                "unit": [
+                    "\u00b5A",
+                    "Hz"
+                ]
+            },
+            "rois": [
+                [
+                    114,
+                    257,
+                    962,
+                    350
+                ],
+                [
+                    483,
+                    21,
+                    457,
+                    157
+                ]
+            ]
+        },
+        {
+            "image": "IMG_20250429_144447.jpg",
+            "#roi": 2,
+            "dictionaries": [
+                "multimeter_range_600",
+                "multimeter_unilateral_range_1000"
+            ],
+            "mode": "AC Current mA",
+            "labels": {
+                "measurement_type": [
+                    "AC Current",
+                    "Frequency"
+                ],
+                "unit": [
+                    "mA",
+                    "Hz"
+                ]
+            },
+            "rois": [
+                [
+                    106,
+                    227,
+                    853,
+                    303
+                ],
+                [
+                    396,
+                    22,
+                    445,
+                    140
+                ]
+            ]
+        },
+        {
+            "image": "IMG_20250429_144521.jpg",
+            "#roi": 2,
+            "dictionaries": [
+                "multimeter_range_10",
+                "multimeter_unilateral_range_1000"
+            ],
+            "mode": "AC Current A",
+            "labels": {
+                "measurement_type": [
+                    "AC Current",
+                    "Frequency"
+                ],
+                "unit": [
+                    "A",
+                    "Hz"
+                ]
+            },
+            "rois": [
+                [
+                    104,
+                    247,
+                    899,
+                    309
+                ],
+                [
+                    399,
+                    28,
+                    486,
+                    145
+                ]
+            ]
+        }
+    ],
+    "power_supply": [
+        {
+            "image": "IMG_20250429_180951.jpg",
+            "#roi": 1,
+            "dictionaries": [
+                "power_supply_voltage"
+            ],
+            "mode": "Voltage V",
+            "labels": {
+                "measurement_type": [
+                    "Voltage"
+                ],
+                "unit": [
+                    "V"
+                ]
+            },
+            "rois": [
+                [
+                    55,
+                    99,
+                    439,
+                    146
+                ]
+            ]
+        },
+        {
+            "image": "IMG_20250429_180903.jpg",
+            "#roi": 1,
+            "dictionaries": [
+                "power_supply_current"
+            ],
+            "mode": "Current A",
+            "labels": {
+                "measurement_type": [
+                    "Current"
+                ],
+                "unit": [
+                    "A"
+                ]
+            },
+            "rois": [
+                [
+                    58,
+                    283,
+                    463,
+                    155
+                ]
+            ]
+        }
+    ],
+    "oximeter": [
+        {
+            "image": "IMG_20250511_184056.jpg",
+            "#roi": 2,
+            "dictionaries": [
+                "oximeter_spo2",
+                "blood_pressure_device_heart beat"
+            ],
+            "mode": "Pulse Rate",
+            "labels": {
+                "measurement_type": [
+                    "SpO2",
+                    "Pulse Rate"
+                ],
+                "unit": [
+                    "%",
+                    "BPM"
+                ]
+            },
+            "rois": [
+                [
+                    27,
+                    57,
+                    132,
+                    94
+                ],
+                [
+                    239,
+                    73,
+                    105,
+                    81
+                ]
+            ]
+        },
+        {
+            "image": "IMG_20250512_130141.jpg",
+            "#roi": 2,
+            "dictionaries": [
+                "oximeter_spo2",
+                "oximeter_pi"
+            ],
+            "mode": "Perfusion Index",
+            "labels": {
+                "measurement_type": [
+                    "SpO2",
+                    "Perfusion Index"
+                ],
+                "unit": [
+                    "%",
+                    "%"
+                ]
+            },
+            "rois": [
+                [
+                    43,
+                    84,
+                    173,
+                    124
+                ],
+                [
+                    345,
+                    110,
+                    159,
+                    102
+                ]
+            ]
+        }
+    ],
+    "thermometer": [
+        {
+            "image": "IMG_20250511_184354.jpg",
+            "#roi": 2,
+            "dictionaries": [
+                "thermometer_temperature celsius",
+                "thermometer_hour"
+            ],
+            "mode": "Temperature",
+            "labels": {
+                "measurement_type": [
+                    "Temperature",
+                    "Time"
+                ],
+                "unit": [
+                    "\u00baC",
+                    ""
+                ]
+            },
+            "rois": [
+                [
+                    154,
+                    237,
+                    267,
+                    171
+                ],
+                [
+                    108,
+                    120,
+                    239,
+                    116
+                ]
+            ]
+        }
+    ],
+    "blood_pressure_device": [
+        {
+            "image": "IMG_20250511_184841.jpg",
+            "#roi": 3,
+            "dictionaries": [
+                "blood_pressure_device_heart beat",
+                "blood_pressure_device_diastolic",
+                "blood_pressure_device_systolic"
+            ],
+            "mode": "ON",
+            "labels": {
+                "measurement_type": [
+                    "Pulse Rate",
+                    "Diastolic Blood Pressure",
+                    "Systolic Blood Pressure"
+                ],
+                "unit": [
+                    "BPM",
+                    "mmHg"
+                ]
+            },
+            "rois": [
+                [
+                    292,
+                    618,
+                    274,
+                    199
+                ],
+                [
+                    208,
+                    332,
+                    355,
+                    251
+                ],
+                [
+                    143,
+                    62,
+                    413,
+                    238
+                ]
+            ]
+        }
+    ]
+}

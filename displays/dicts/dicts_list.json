@@ -1,0 +1,9 @@
+{
+    "metronome": [],
+    "multimeter": ["range_600", "range_1000", "unilateral_range_1000", "range_750", "unilateral_range_60", "range_10", "temperature celsius", 
+                    "temperature farenheit", "duty"],
+    "power_supply": ["voltage", "current"],
+    "oximeter": ["spo2", "pi"],
+    "thermometer": ["temperature celsius", "hour"],
+    "blood_pressure_device": ["systolic", "diastolic", "heart beat"]
+}

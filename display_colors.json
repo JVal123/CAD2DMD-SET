@@ -1,0 +1,18 @@
+{
+    "gray_colors": {
+        "Light Gray": [0.83, 0.83, 0.83, 1],
+        "Neutral Gray": [0.66, 0.66, 0.66, 1],
+        "Dark Gray": [0.41, 0.41, 0.41, 1],
+        "Cool Gray": [0.69, 0.77, 0.87, 1],
+        "Warm Gray": [0.75, 0.75, 0.75, 1],
+        "Graphite Gray": [0.33, 0.33, 0.33, 1],
+        "Charcoal Gray": [0.2, 0.2, 0.2, 1]
+    },
+    "near_gray_colors": {
+        "E-Ink Gray": [0.94, 0.94, 0.94, 1],
+        "Pale Cyan": [0.69, 0.93, 0.93, 1],
+        "Slate Blue": [0.42, 0.35, 0.8, 1],
+        "Steel Blue": [0.27, 0.51, 0.71, 1],
+        "Muted Teal": [0.37, 0.62, 0.63, 1]
+    }
+}

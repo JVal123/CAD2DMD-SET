@@ -1,0 +1,8 @@
+{
+    "power_supply": 0,
+    "metronome": 90,
+    "multimeter": -90,
+    "oximeter": 90,
+    "thermometer": 180,
+    "blood_pressure_device": 180
+}

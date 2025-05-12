@@ -1,0 +1,30 @@
+{
+    "settings": {
+        "resolution": [1920, 1080],
+        "file_format": "PNG"
+    },
+    "camera": {
+        "relative_distance": [8, 10],
+        "relative_shift_x": [-0.05, 0.05],
+        "relative_shift_y": [-0.05, 0.05],
+        "focal_length": [40, 200]
+    },
+    "object": {
+        "x_rotation": [-50, 50],
+        "y_rotation": [-20, 20],
+        "z_rotation": [-90, 90],
+        "negative_case": {
+            "prob": 0.05,
+            "z_rotation": [-90, -270]
+        }
+    },
+    "light": {
+        "color": [[0.85, 1], [0.6, 1]],
+        "energy": [80, 1000],
+        "falloff": true,
+        "radius": [1, 4],
+        "relative_x_distance": [-3, 3],
+        "relative_y_distance": [-3, 3],
+        "relative_z_distance": [1, 5]
+    }
+}
