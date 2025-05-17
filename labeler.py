@@ -6,6 +6,19 @@ import helper_functions
 import csv
 import ast
 import json
+import pandas as pd
+import os
+import sys
+import numpy as np
+
+# Add the parent directory to the path
+vlmevalkit_folder = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'VLMEvalKit/vlmeval/smp/'))
+
+sys.path.append(vlmevalkit_folder)
+
+from vlm import encode_image_file_to_base64
+
+
 
 def get_qa_pair(device_type, mode, value, json_dict, random_generator):
 
@@ -233,6 +246,7 @@ def get_qa_pair(device_type, mode, value, json_dict, random_generator):
 
 
     elif len(measurement_type)==1 and len(unit)==2 and len(value) == 2: #1 measurement type and 2 different units qa pairs
+        measurement_type = measurement_type[0]
         values_formatted = []
         for i in range(2):
             values_formatted.append(f"{value[i]} {unit[i]}") 
@@ -306,7 +320,13 @@ def generate_labels(csv_filepath, mappings_json, labels_json, random_generator):
             image = extracted_data["Image"]
             device_type = extracted_data["Device"]
             mode = extracted_data["Mode"]
-            value = ast.literal_eval(extracted_data["Measurement"])
+
+            try:
+                value = ast.literal_eval(extracted_data["Measurement"])
+            except:
+                value = extracted_data["Measurement"]
+                cleaned_value = value.replace("‘", "'").replace("’", "'").replace("“", '"').replace("”", '"') # Replace curly quotes with straight ones
+                value = ast.literal_eval(cleaned_value)
 
             qa_pair = get_qa_pair(device_type, mode, value, mappings_dict, random_generator)
 
@@ -321,3 +341,66 @@ def generate_labels(csv_filepath, mappings_json, labels_json, random_generator):
     # Save all labels after the loop
     with open(labels_json, 'w') as file:
         json.dump(labels_list, file, indent=4)
+
+
+def labels_in_tsv(json_path, image_dir, tsv_path, is_test_split=False):    
+    """
+    Converts a JSON label file to a TSV format with base64-encoded images.
+    
+    Args:
+        json_path (str): Path to the input labels.json
+        image_dir (str): Path to the directory containing image files
+        tsv_path (str): Path where the output TSV will be saved
+        is_test_split (bool): If True, 'answer' field will be left empty
+    """
+   
+   # Load the JSON data
+    data = helper_functions.load_json(json_path)
+    
+    rows = []
+    for idx, item in enumerate(data, start=1):
+        image_filename = os.path.join(image_dir, item["image"] + ".png")  # Modify extension if needed
+        try:
+            image_base64 = encode_image_file_to_base64(image_filename)
+        except Exception as e:
+            print(f"Error encoding image {image_filename}: {e}")
+            image_base64 = ""
+
+        rows.append({
+            "index": idx,
+            "image": image_base64,
+            "question": item["question"],
+            "answer": "" if is_test_split else item.get("answer", "")
+        })
+
+    df = pd.DataFrame(rows)
+    df.to_csv(tsv_path, sep='\t', index=False)
+    
+
+if __name__=="__main__":
+
+    # --------- Creating TSV file for VLMEvalKit -----------------------------
+
+    '''labels_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'dataset')
+    json_path = os.path.join(labels_path, 'labels.json')
+    tsv_path = os.path.join(labels_path, 'test_labels.tsv')
+    image_dir = os.path.join(labels_path, 'foreground')
+
+    print('Creating tsv labels version...')
+ 
+    labels_in_tsv(json_path, image_dir, tsv_path, is_test_split=True)
+
+    print('Stage Complete!')'''
+
+    # --------- Creating test set labels -----------------------------
+
+    csv_file = "test.csv" 
+    roi_filepath = os.path.abspath("displays/roi_mappings.json")
+
+    rng = np.random.default_rng(seed=42)
+
+    print("Creating test set labels json file... ")
+
+    generate_labels(csv_file, mappings_json=roi_filepath, labels_json='test.json', random_generator=rng)
+
+    print("Label Generation Stage Complete! ✅")

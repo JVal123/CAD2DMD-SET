@@ -1,72 +1,29 @@
 #from common import *
-from libcom import FOPAHeatMapModel, get_composite_image, color_transfer
+#from libcom import FOPAHeatMapModel, get_composite_image, color_transfer
 import os
 import cv2
 import shutil
 import random
 import json
 import helper_functions
+import sys
+from PIL import Image
 
+# Add the parent directory to the path
+libcom_folder = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'libcom/libcom'))
+fopa_folder = os.path.join(libcom_folder, "fopa_heat_map")
+naive_composite_folder = os.path.join(libcom_folder, "naive_composition")
+color_transfer_folder = os.path.join(libcom_folder, "color_transfer")
 
+sys.path.append(fopa_folder)
+sys.path.append(naive_composite_folder)
+sys.path.append(color_transfer_folder)
 
-'''def create_combinations(background_folder, foreground_folder, json_filename='composition_combinations.json'):
-    # Create combinations .json file
+# Now you can import the module
+from fopa_heat_map import FOPAHeatMapModel
+from generate_composite_image import get_composite_image
+from reinhard import color_transfer
 
-    combinations = helper_functions.load_json(json_filename, initializer=[])
-
-    backgrounds = os.listdir(background_folder)
-    foregrounds = os.listdir(foreground_folder)
-
-    max_combinations = len(backgrounds) * len(foregrounds)
-
-    if len(combinations) >= max_combinations:
-        print("All unique combinations have been used.")
-
-    # Try to find all combination
-    while (len(combinations) < max_combinations):
-        bg = random.choice(backgrounds)
-        fg = random.choice(foregrounds)
-        combo_key = (bg, fg)
-
-        if combo_key not in combinations:
-            combinations.append(combo_key)
-
-    # Save updated combinations
-    with open(json_filename, "w") as f:
-        json.dump(list(combinations), f)
-
-    print('Created combinations json file...')'''
-
-
-'''def return_combination(background_folder, foreground_folder, mask_folder, json_file, index):
-    background, foreground = json_file[index]
-
-    # Get mask (same filename as foreground)
-    mask = f"{foreground}_mask.png"
-
-    return {
-        'background': os.path.join(background_folder, background),
-        'foreground_mask': os.path.join(mask_folder, mask),
-        'foreground': os.path.join(foreground_folder, foreground)
-    }'''
-
-
-'''def get_list_fopa(number, combinations_filename):
-    data_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'dataset')
-    background_folder = os.path.join(data_dir, 'background')
-    foreground_folder = os.path.join(data_dir, 'foreground')
-    mask_folder = os.path.join(data_dir, 'foreground_mask')
-
-    combinations_path = os.path.join(data_dir, combinations_filename)
-    if not os.path.exists(combinations_path): #Combination json has not yet been created
-        create_combinations(background_folder, foreground_folder)
-
-    combinations = helper_functions.load_json(combinations_path, initializer=[])
-    samples  = []
-    for i in range(number):
-        pair = return_combination(background_folder, foreground_folder, mask_folder, json_file=combinations, index=i)
-        samples.append(pair)
-    return samples'''
 
 
 def rename_pair_images_to_number(file_paths_dict, new_number=1674):
@@ -205,10 +162,17 @@ def get_pair_fopa(used_combinations_filename):
     return pair
 
 
-def get_fopa_bbox(combinations_json):
+def get_custom_bbox(combinations_json, area_coverage):
+    '''
+    Uses the FOPA Model to extract possible location bounding boxes and then calculates their center. It then uses this coordinate,
+    and the aspect ratio of the bounding box of the corresponding foreground object to get tailored bounding boxes, but still centered
+    in a location given by FOPA. When no center is viable the bounding box center is chosen at random. 
+
+    Returns the custom bbox in (x1, y1, x2, y2) format, ready to be used in the naive composition function.
+    '''
     task_name = 'fopa_heat_map'
 
-    # collect pairwise sample
+    # Collects a pairwise sample that has not been used before
     pair = get_pair_fopa(used_combinations_filename=combinations_json)
 
     #print('Pairs List: ', pairs_list)
@@ -233,68 +197,146 @@ def get_fopa_bbox(combinations_json):
     #print('Bbox: ', bboxes)
     restore_pair_images_name(originals=pair, renamed=renamed_pair) #Rename filenames so that all combinations are possible
     #print('Restored Pair: ', restored_pair)
-    pair['bbox'] = bboxes
+
+    _, _, w, h = helper_functions.get_bounding_box_xywh(pair['foreground_mask']) #Foreground object bounding box information
+    aspect_ratio = w/h
+
+    # Load background image and get its size
+    bg_image = Image.open(pair['background'])
+    bg_width, bg_height = bg_image.size
+    bg_area = bg_width * bg_height
+    min_bbox_area = area_coverage * bg_area  # 10% of the background area (minimum size for foreground object
+
+    valid_bboxes = []
+
+    #print('FOPA bboxes: ', bboxes)
+
+    for bbox in bboxes:
+        #print('FOPA Bbox: ', bbox)
+        height = bbox[3]
+        width = bbox[2]
+        center_x = bbox[0] + (width)/2
+        center_y = bbox[1] + (height)/2
+
+        custom_width = aspect_ratio*height #Custom width, in order for new bounding box to preserve foreground object aspect ratio
         
+        # Scaling
+        area = custom_width * height
 
-    #img_name  = os.path.basename(bg_img).replace('.png', '.jpg')
-    #grid_img  = make_image_grid([bg_img, fg_img, heatmaps[0]])
-    #res_path  = os.path.join(result_dir, 'grid', img_name)
-    #cv2.imwrite(res_path, grid_img)
-    #print('save result to ', res_path)
+        if area < min_bbox_area:
+            scale_factor = int((min_bbox_area / area) ** 0.5)  # Scale both width and height equally
+            new_height = height * scale_factor
+            new_width = custom_width * scale_factor
+        else:
+            new_height = height
+            new_width = custom_width
 
-    #print('Pair with bbox: ', pair)
-    return pair
+        x1 = int(center_x - new_width/2)
+        y1 = int(center_y - new_height/2)
+        x2, y2 = int(x1 + new_width), int(y1 + new_height)
+        custom_bbox = [x1, y1, x2, y2]
+        #print('Custom bbox: ', custom_bbox)
+
+        # Validation
+        if x1 >= 0 and y1 >= 0 and x2 <= bg_width and y2 <= bg_height:
+            valid_bboxes.append(custom_bbox)
+            print("✅ Custom bbox fits in background.")
+            break
+        else:
+            print("❌ Custom bbox goes outside background bounds. Trying other FOPA center coordinates.")
+
+    if not valid_bboxes: # If no bbox is valid, because they are out of bounds
+        print('NO BOUNDING BOXES FIT, FETCHING ANOTHER PAIR...')
+        #get_custom_bbox(combinations_json)
+        return None
+    else:
+        pair['bbox'] = custom_bbox #You choose only one of the bboxes
+        return pair
 
         
 
 def naive_composition(pair):
-    task_name = 'naive_composition'
+    #task_name = 'naive_composition'
 
-    print('Pair: ', pair)
+    #print('Pair: ', pair)
 
     bg_img = pair['background']
     fg_img = pair['foreground']
     fg_mask = pair['foreground_mask']
-    bbox = pair['bbox'][0]
+    custom_bbox = pair['bbox']
 
-    print('Bbox: ', bbox)
+    #Change bbox format from [x, y, w, h] to [x1, y1, x2, y2]
+    #x, y, w, h = fopa_bbox[0], fopa_bbox[1], fopa_bbox[2], fopa_bbox[3]
+    #bbox = [x, y, x+w, y+h]
 
-    result_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'dataset/results', task_name)
-    if os.path.exists(result_dir):
-        shutil.rmtree(result_dir)
-    os.makedirs(result_dir, exist_ok=True)
+    #print('Custom bbox: ', custom_bbox)
+
+    #result_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'dataset/results', task_name)
+    #if os.path.exists(result_dir):
+    #    shutil.rmtree(result_dir)
+    #os.makedirs(result_dir, exist_ok=True)
     
     
     #fg_mask = test_dir + 'foreground_mask/' + img_name.replace('.jpg', '.png')
     
     # generate composite images by naive methods
-    comp_img, comp_mask = get_composite_image(fg_img, fg_mask, bg_img, bbox, 'none')
+    comp_img, comp_mask = get_composite_image(fg_img, fg_mask, bg_img, custom_bbox, 'none')
+
+    #comp_img_name = f'img{iteration}.png'
+    #comp_mask_name = f'img{iteration}_mask.png'
+    
+    #comp_img_dir = os.path.join(result_dir, comp_img_name)
+    #comp_mask_dir = os.path.join(result_dir, comp_mask_name)
 
     #Saves images
-    cv2.imwrite(result_dir, comp_img)
-    cv2.imwrite(result_dir, comp_mask)
+    #cv2.imwrite(comp_img_dir, comp_img)
+    #cv2.imwrite(comp_mask_dir, comp_mask)
 
     return comp_img, comp_mask
-
-
-def naive_img_harmonization(comp_img, comp_mask):
-
-    trans_img = color_transfer(comp_img, comp_mask)
-    
-
-    cv2.imwrite('../docs/_static/image/colortransfer_result1.jpg', grid_img)
 
 
 
 
 if __name__ == '__main__':
-    #background_folder = 'dataset/background'
-    #foreground_folder = 'dataset/foreground'
+    result_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'dataset/results', 'training_set')
+    comp_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'dataset/results', 'naive_composition')
+    #if os.path.exists(result_dir):
+    #    shutil.rmtree(result_dir)
+    os.makedirs(result_dir, exist_ok=True)
+    os.makedirs(comp_dir, exist_ok=True)
     
     json_filename='used_combinations.json'
 
-    #print(f'Begin extracting fopa bounding boxes...')
 
-    for i in range(1):
-        pair = get_fopa_bbox(combinations_json='used_combinations.json')
+    render_number = 10
+    pair = None
+
+    for i in range(render_number):
+
+        # -------------- Get Bounding Box ----------------------------------------------------
+
+        while pair == None: #While there isn't an appropriate bounding box 
+            pair = get_custom_bbox(combinations_json='used_combinations.json', area_coverage=0.10)
+
+        bbox = pair['bbox'] # In (x1, y1, x2, y2) format
+        # -------------- Naive Composition ----------------------------------------------------
+        
         comp_img, comp_mask = naive_composition(pair)
+        comp_img_name = f'img{i}.png'
+        comp_mask_name = f'img{i}_mask.png'
+        comp_img_dir = os.path.join(comp_dir, comp_img_name)
+        comp_mask_dir = os.path.join(comp_dir, comp_mask_name)
+        cv2.imwrite(comp_img_dir, comp_img)
+        cv2.imwrite(comp_mask_dir, comp_mask)
+
+        # -------------- Color Transfer ----------------------------------------------------
+
+        transf_img = color_transfer(comp_img, comp_mask)
+        pair = None
+
+        transf_img_name = comp_img_name
+        transf_img_dir = os.path.join(result_dir, transf_img_name)
+        cv2.imwrite(transf_img_dir, transf_img)
+        
+        #comp_img_name = f'img{i}.png'
+        #cv2.imwrite(os.path.join(result_dir, comp_img_name), comp_img)

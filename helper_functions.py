@@ -13,6 +13,9 @@ import pandas as pd
 import shutil
 import numpy as np
 import ast
+from PIL import Image
+import cv2
+import re
 
 # ------------- Image Functions ----------------------------------------
 
@@ -41,6 +44,89 @@ def determine_mask_colors(mask):
         else:
             background, foreground = 255, 0
             return background, foreground
+
+
+def extract_frames_from_video(video_path, output_folder, desired_fps):
+    os.makedirs(output_folder, exist_ok=True)
+
+    cap = cv2.VideoCapture(video_path)
+    if not cap.isOpened():
+        print(f"❌ Cannot open video: {video_path}")
+        return
+
+    original_fps = cap.get(cv2.CAP_PROP_FPS)
+    if desired_fps > original_fps or desired_fps <= 0:
+        print(f"⚠️ Skipping '{video_path}': Desired FPS ({desired_fps}) must be > 0 and <= original FPS ({original_fps})")
+        cap.release()
+        return
+
+    frame_interval = int(round(original_fps / desired_fps))
+
+    frame_number = 0
+    saved_frame_count = 0
+
+    while True:
+        ret, frame = cap.read()
+        if not ret:
+            break
+        if frame_number % frame_interval == 0:
+            frame_filename = os.path.join(output_folder, f'frame_{saved_frame_count:05d}.png')
+            cv2.imwrite(frame_filename, frame)
+            saved_frame_count += 1
+        frame_number += 1
+
+    cap.release()
+    print(f"✅ {os.path.basename(video_path)}: Extracted {saved_frame_count} frames at {desired_fps} FPS")
+
+
+def extract_frames_from_folder(input_folder, output_root_folder, desired_fps, video_extensions=('.mp4', '.avi', '.mov', '.mkv')):
+    """
+    Extract frames from all videos in a folder at a specified FPS.
+    
+    Parameters:
+        input_folder (str): Path to folder containing video files.
+        output_root_folder (str): Root directory to save all extracted frames.
+        desired_fps (float): Target FPS for frame extraction.
+        video_extensions (tuple): Valid video file extensions.
+    """
+    if not os.path.exists(input_folder):
+        raise ValueError(f"Input folder '{input_folder}' does not exist.")
+
+    os.makedirs(output_root_folder, exist_ok=True)
+
+    for filename in os.listdir(input_folder):
+        if filename.lower().endswith(video_extensions):
+            video_path = os.path.join(input_folder, filename)
+            video_name = os.path.splitext(filename)[0]
+            output_folder = os.path.join(output_root_folder, video_name)
+            extract_frames_from_video(video_path, output_folder, desired_fps)
+
+
+def get_bounding_box_xywh(mask_path):
+    """
+    Get the bounding box (x, y, width, height) from a binary mask image file.
+
+    Parameters:
+        mask_path (str): Path to the binary mask image (e.g., PNG).
+
+    Returns:
+        tuple: (x, y, width, height) or None if no foreground is found.
+    """
+    # Load mask in grayscale
+    mask = cv2.imread(mask_path, cv2.IMREAD_GRAYSCALE)
+    if mask is None:
+        raise FileNotFoundError(f"Could not load mask from path: {mask_path}")
+
+    # Get coordinates where mask is non-zero
+    rows, cols = np.where(mask > 0)
+    if rows.size == 0 or cols.size == 0:
+        return None  # No foreground found
+
+    y, x = rows.min(), cols.min()
+    height = rows.max() - y + 1
+    width = cols.max() - x + 1
+
+    return (x, y, width, height)
 
 # -------------- Folder and Subfolder Functions -------------------------------------
 
@@ -195,6 +281,67 @@ def rename_single_image(folder_path, img_name):
         #    print(f"Target file already exists: {new_path}")
     else:
         print("New name is either empty or identical to the original.")
+
+
+
+def crop_images_in_folder(input_folder, output_folder, crop_width=200, crop_height=200):
+    """
+    Crop the center of all images in a folder and save them to the output folder.
+
+    Parameters:
+    - input_folder (str): Path to the folder containing input images.
+    - output_folder (str): Path to the folder where cropped images will be saved.
+    - crop_width (int): Width of the cropped area.
+    - crop_height (int): Height of the cropped area.
+    """
+    os.makedirs(output_folder, exist_ok=True)
+
+    for filename in os.listdir(input_folder):
+        input_path = os.path.join(input_folder, filename)
+
+        # Check for valid image files
+        if os.path.isfile(input_path) and filename.lower().endswith((".png", ".jpg", ".jpeg", ".bmp", ".gif", ".tiff")):
+            img = Image.open(input_path)
+            img_width, img_height = img.size
+
+            left = (img_width - crop_width) // 2
+            top = (img_height - crop_height) // 2
+            right = left + crop_width
+            bottom = top + crop_height
+
+            cropped_img = img.crop((left, top, right, bottom))
+
+            # Convert image to RGB if saving as JPEG and image is in incompatible mode
+            if filename.lower().endswith((".jpg", ".jpeg")) and cropped_img.mode != "RGB":
+                cropped_img = cropped_img.convert("RGB")
+
+            output_path = os.path.join(output_folder, filename)
+            cropped_img.save(output_path)
+
+
+
+def consolidate_images(test_set_path):
+    # Get current highest image number in test_set folder
+    existing_images = [f for f in os.listdir(test_set_path) if re.match(r'img\d+\.png$', f)]
+    if existing_images:
+        highest_num = max(int(re.findall(r'\d+', img)[0]) for img in existing_images)
+    else:
+        highest_num = 0
+
+    current_img_num = highest_num + 1
+
+    for folder in os.listdir(test_set_path):
+        folder_path = os.path.join(test_set_path, folder)
+        if os.path.isdir(folder_path):
+            for file in sorted(os.listdir(folder_path)):
+                file_path = os.path.join(folder_path, file)
+                if os.path.isfile(file_path):
+                    new_filename = f"img{current_img_num}.png"
+                    new_path = os.path.join(test_set_path, new_filename)
+                    shutil.move(file_path, new_path)
+                    current_img_num += 1
+            os.rmdir(folder_path)  # Remove the now empty folder
+
 
 # ------------- Json File Functions ---------------------------------------------
 
@@ -362,6 +509,38 @@ def get_image_data(csv_path: str, image_name: str) -> Optional[Dict[str, Any]]:
 
 
 
+if __name__=="__main__":
+    #crop_images_in_folder(input_folder='dataset/background', output_folder='dataset/background_cropped')
 
+    # ---------- Extract frames from video files -----------------------------------------------------
+    
+    #output_folder = 'test_set/'
+    #extract_frames_from_folder(input_folder='videos', output_root_folder=output_folder, desired_fps=3)
 
+    # ----------- Generate numbered test set images from device folders with test images -----------------
 
+    #consolidate_images('test_set/')
+
+    # ----------- Bounding Boxes Test -------------------------------------------------------------------
+
+    '''#Step 1: Get the bounding box from the mask
+    mask_path = '/media/goncalo/3TBHDD/Joao/Thesis_Joao/CAD2DMD-SET/dataset/foreground_mask/img29_mask.png'
+    bbox = get_bounding_box_xywh(mask_path)
+    print(bbox)
+
+    # Step 2: Load the corresponding foreground image
+    image_path = '/media/goncalo/3TBHDD/Joao/Thesis_Joao/CAD2DMD-SET/dataset/foreground/img29.png'
+    image = cv2.imread(image_path)
+
+    # Step 3: Draw the bounding box on the image
+    if bbox:
+        x, y, w, h = bbox
+        # Draw rectangle: image, top-left, bottom-right, color(BGR), thickness
+        cv2.rectangle(image, (x, y), (x + w, y + h), (0, 255, 0), 2)
+
+        # Optional: Display the image with bounding box
+        cv2.imshow("Bounding Box", image)
+        cv2.waitKey(0)
+        cv2.destroyAllWindows()
+    else:
+        print("No foreground found in mask.")'''
