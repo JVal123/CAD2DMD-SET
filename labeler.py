@@ -10,6 +10,7 @@ import pandas as pd
 import os
 import sys
 import numpy as np
+import re
 
 # Add the parent directory to the path
 vlmevalkit_folder = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'VLMEvalKit/vlmeval/smp/'))
@@ -342,31 +343,44 @@ def generate_labels(csv_filepath, mappings_json, labels_json, random_generator):
         json.dump(labels_list, file, indent=4)
 
 
-def generate_training_labels(foreground_labels_list, training_labels_path, pair, comp_img_name):
-    """
-    Appends the appropriate question-answer pair to the training_labels JSON file
-    based on the name of the foreground image.
-
-    Args:
-        foreground_labels_list (list): List of label dicts with keys 'image', 'question', 'answer'.
-        training_labels_path (str): File path to the JSON file that will be loaded and updated.
-        pair (dict): Dictionary with a 'foreground' key pointing to a file path.
-        comp_img_name (str): The final composed image filename to use as the 'image' field.
-
-    Returns:
-        None. The function updates the JSON file at training_labels_path in place.
-    """
+def generate_training_labels(training_csv, foreground_labels_list, training_labels_path):
+    
     # Load the training labels JSON file (delete if it already exists)
     training_labels_list = helper_functions.load_json(training_labels_path, initializer=[])
 
     if not isinstance(training_labels_list, list):
         training_labels_list = []
 
+    columns_to_extract = ["Composite", "Foreground"]
+
+    with open(training_csv, mode='r', encoding='utf-8') as csvfile:
+        reader = csv.DictReader(csvfile)
+
+        for row in reader:
+            extracted_data = {col: row[col] for col in columns_to_extract if col in row}
+
+            comp_img_name = os.path.splitext(extracted_data["Composite"])[0]
+            foreground_name = os.path.splitext(extracted_data["Foreground"])[0]
+
+            match = re.search(r'\d+', foreground_name)
+            foreground_number = int(match.group())
+        
+            label = foreground_labels_list[foreground_number-1]
+
+            if label['image'] == foreground_name:
+                new_entry = {
+                    "image": comp_img_name,
+                    "question": label['question'],
+                    "answer": label['answer']
+                }
+                training_labels_list.append(new_entry)
+            else:
+                raise Exception("Foreground labels wrongly built")
     # Extract the base name of the foreground image (e.g., "img1" from "path/to/img1.png")
-    foreground_basename = os.path.splitext(os.path.basename(pair['foreground']))[0]
+    #foreground_basename = os.path.splitext(os.path.basename(pair['foreground']))[0]
 
     # Find and append the matching QA pair
-    for label in foreground_labels_list:
+    '''for label in foreground_labels_list:
         if label['image'] == foreground_basename:
             new_entry = {
                 "image": comp_img_name,
@@ -374,7 +388,7 @@ def generate_training_labels(foreground_labels_list, training_labels_path, pair,
                 "answer": label['answer']
             }
             training_labels_list.append(new_entry)
-            break
+            break'''
 
     # Save the updated training labels back to the JSON file
     with open(training_labels_path, 'w') as f:

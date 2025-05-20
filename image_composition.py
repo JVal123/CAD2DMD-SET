@@ -428,7 +428,7 @@ if __name__ == '__main__':
         #comp_img_name = f'img{i}.png'
         #cv2.imwrite(os.path.join(result_dir, comp_img_name), comp_img)
 
-        # ------------- Create CSV File and Generate Labels --------------------------------------------------
+        # ------------- Create CSV File  --------------------------------------------------
         foreground_image = os.path.basename(pair["foreground"])
         foreground_mask_image = os.path.basename(pair["foreground_mask"])
         background_image = os.path.basename(pair["background"])
@@ -438,6 +438,7 @@ if __name__ == '__main__':
 
         helper_functions.write_to_csv(filename=csv_file, data=row, column_titles=columns)
 
-        labeler.generate_training_labels(foreground_labels_list=foreground_labels, training_labels_path=training_labels_json,
-                                         pair=pair, comp_img_name=comp_img_name)
+    # ----------------- Generate Labels --------------------------------------------------
+    
+    labeler.generate_training_labels(training_csv=csv_file, foreground_labels_list=foreground_labels, training_labels_path=training_labels_json)
         
