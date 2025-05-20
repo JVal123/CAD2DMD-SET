@@ -388,6 +388,13 @@ if __name__ == '__main__':
     if os.path.exists(training_labels_json):
         os.remove(training_labels_json)
 
+
+    csv_file = os.path.join(result_dir, "training.csv")
+    columns = ["Composite", "Foreground", "Foreground Mask", "Background", "Bbox"]
+
+    if os.path.exists(csv_file):
+        os.remove(csv_file)
+
     
     #number_workers = os.cpu_count() - 2
     render_number = 10
@@ -421,7 +428,15 @@ if __name__ == '__main__':
         #comp_img_name = f'img{i}.png'
         #cv2.imwrite(os.path.join(result_dir, comp_img_name), comp_img)
 
-        # ------------- Generate Labels --------------------------------------------------
+        # ------------- Create CSV File and Generate Labels --------------------------------------------------
+        foreground_image = os.path.basename(pair["foreground"])
+        foreground_mask_image = os.path.basename(pair["foreground_mask"])
+        background_image = os.path.basename(pair["background"])
+
+        row = {"Composite": comp_img_name, "Foreground": foreground_image, "Foreground Mask": foreground_mask_image, 
+               "Background": background_image, "Bbox": bbox}
+
+        helper_functions.write_to_csv(filename=csv_file, data=row, column_titles=columns)
 
         labeler.generate_training_labels(foreground_labels_list=foreground_labels, training_labels_path=training_labels_json,
                                          pair=pair, comp_img_name=comp_img_name)

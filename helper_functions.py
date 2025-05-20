@@ -470,7 +470,7 @@ def write_to_csv(filename, data, column_titles):
     updated = False
     rows = []
 
-    print(f"Saving to: {filename}")
+    #print(f"Saving to: {filename}")
 
     with open(filename, mode='a', newline='') as csvfile:
         writer = csv.DictWriter(csvfile, fieldnames=column_titles)
@@ -498,6 +498,7 @@ def write_to_csv(filename, data, column_titles):
         writer = csv.DictWriter(csvfile, fieldnames=column_titles)
         writer.writeheader()
         writer.writerows(rows)
+
 
 def get_image_data(csv_path: str, image_name: str) -> Optional[Dict[str, Any]]:
     """
