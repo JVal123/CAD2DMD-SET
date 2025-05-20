@@ -81,7 +81,8 @@ if __name__ == "__main__":
     face_uv_rotation_filepath = os.path.abspath("uv_rotation.json")
     #render_parameters_filepath = os.path.abspath("render_parameters.json") 
     render_parameters = helper_functions.load_json("render_parameters.json")
-    csv_file = "dataset.csv"
+    csv_file = os.path.join(foreground_path, "foreground.csv")
+    #print('CSV Filename: ', csv_file)
     columns = ["Image", "Device", "Mode", "Measurement", "Display Color", "Camera Distance", "Camera Shift X", "Camera Shift Y",
                 "Camera Focal Length", "Object Rotation X", "Object Rotation Y", "Object Rotation Z", "Negative Case Rotation Z", "Light Color",
                 "Light Energy", "Light Falloff", "Light Radius", "Light Distance X", "Light Distance Y", "Light Distance Z", 
@@ -174,7 +175,7 @@ if __name__ == "__main__":
 
     # ------------------ Label Generation -----------------------
                 
-    labeler.generate_labels(csv_file, mappings_json=roi_filepath, labels_json=f'{dataset_path}/labels.json', random_generator=rng)
+    labeler.generate_labels(csv_file, mappings_json=roi_filepath, labels_json=f'{foreground_path}/foreground_labels.json', random_generator=rng)
 
     print("Label Generation Stage Complete! ✅")    
 

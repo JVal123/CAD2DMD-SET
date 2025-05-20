@@ -52,7 +52,7 @@ def add_motion_blur(dataset_folder_path, csv_file, prob=0.2):
 
             # Specify the kernel size
             # The greater the size, the more the motion
-            kernel_size = random.randint(10, 40)
+            kernel_size = random.randint(10, 30)
             x = random.randint(-kernel_size // 2, kernel_size // 2)  # Random direction
             y = random.randint(-kernel_size // 2, kernel_size // 2)
 

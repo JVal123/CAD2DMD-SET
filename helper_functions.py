@@ -241,12 +241,16 @@ def get_random_image(folder_path):
 
 
 def rename_images_in_folder(input_folder):
+    image_extensions = {'.jpg', '.jpeg', '.png', '.bmp', '.gif', '.tiff', '.webp'}
+
     for root, _, files in os.walk(input_folder):
         for file in files:
             file_path = os.path.join(root, file)
             
             # Find the first occurrence of '0' and remove everything after, including the extension
             name, ext = os.path.splitext(file)
+            if ext.lower() not in image_extensions:
+                continue  # Skip non-image files
             name = name[:-4]
             
             # Ensure new name is not empty and doesn't already exist
@@ -281,7 +285,6 @@ def rename_single_image(folder_path, img_name):
         #    print(f"Target file already exists: {new_path}")
     else:
         print("New name is either empty or identical to the original.")
-
 
 
 def crop_images_in_folder(input_folder, output_folder, crop_width=200, crop_height=200):
@@ -319,7 +322,6 @@ def crop_images_in_folder(input_folder, output_folder, crop_width=200, crop_heig
             cropped_img.save(output_path)
 
 
-
 def consolidate_images(test_set_path):
     # Get current highest image number in test_set folder
     existing_images = [f for f in os.listdir(test_set_path) if re.match(r'img\d+\.png$', f)]
@@ -342,6 +344,36 @@ def consolidate_images(test_set_path):
                     current_img_num += 1
             os.rmdir(folder_path)  # Remove the now empty folder
 
+
+def remove_low_resolution_images(folder_path, min_width, min_height):
+    """
+    Removes images in the specified folder that are below the given resolution.
+
+    Parameters:
+        folder_path (str): Path to the folder containing images.
+        min_width (int): Minimum allowed width.
+        min_height (int): Minimum allowed height.
+    """
+    if not os.path.isdir(folder_path):
+        raise ValueError(f"'{folder_path}' is not a valid directory.")
+
+    removed_files = []
+
+    for filename in os.listdir(folder_path):
+        file_path = os.path.join(folder_path, filename)
+        if not os.path.isfile(file_path):
+            continue  # Skip non-file entries
+
+        try:
+            with Image.open(file_path) as img:
+                width, height = img.size
+                if width < min_width or height < min_height:
+                    os.remove(file_path)
+                    removed_files.append(filename)
+        except Exception as e:
+            print(f"Skipping {filename}: {e}")
+
+    print(f"Removed {len(removed_files)} image(s).")
 
 # ------------- Json File Functions ---------------------------------------------
 
@@ -437,6 +469,8 @@ def write_to_csv(filename, data, column_titles):
     """
     updated = False
     rows = []
+
+    print(f"Saving to: {filename}")
 
     with open(filename, mode='a', newline='') as csvfile:
         writer = csv.DictWriter(csvfile, fieldnames=column_titles)
@@ -544,3 +578,7 @@ if __name__=="__main__":
         cv2.destroyAllWindows()
     else:
         print("No foreground found in mask.")'''
+    
+    # ----------- Ensure background images high resolution  -------------------------------------------------------------------
+
+    remove_low_resolution_images("dataset/background", min_width=800, min_height=600)

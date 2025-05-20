@@ -1,13 +1,19 @@
 #from common import *
 #from libcom import FOPAHeatMapModel, get_composite_image, color_transfer
 import os
+import time
 import cv2
 import shutil
 import random
 import json
 import helper_functions
 import sys
+import labeler
 from PIL import Image
+import concurrent.futures
+import uuid
+from filelock import FileLock
+
 
 # Add the parent directory to the path
 libcom_folder = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'libcom/libcom'))
@@ -24,6 +30,22 @@ from fopa_heat_map import FOPAHeatMapModel
 from generate_composite_image import get_composite_image
 from reinhard import color_transfer
 
+
+def get_next_unique_number(counter_file='dataset/unique_id.txt'):
+    lock = FileLock(counter_file + '.lock')
+    with lock:
+        if os.path.exists(counter_file):
+            with open(counter_file, 'r') as f:
+                number = int(f.read().strip())
+        else:
+            number = 1000  # Start from a reasonable baseline
+
+        next_number = number + 1
+
+        with open(counter_file, 'w') as f:
+            f.write(str(next_number))
+
+    return str(next_number)
 
 
 def rename_pair_images_to_number(file_paths_dict, new_number=1674):
@@ -107,12 +129,25 @@ def restore_pair_images_name(originals, renamed):
 
 
 def get_unique_image_triplet(background_folder, foreground_folder, mask_folder, used_combinations_path):
+    
+    lock_path = used_combinations_path + ".lock"
+    with FileLock(lock_path):  # Ensures exclusive access
+        if os.path.exists(used_combinations_path):
+            with open(used_combinations_path, "r") as f:
+                try:
+                    used_combinations = set(tuple(x) for x in json.load(f))
+                except json.JSONDecodeError:
+                    used_combinations = set()
+        else:
+            used_combinations = set()
+    
+    
     # Load existing used combinations
-    if os.path.exists(used_combinations_path):
-        with open(used_combinations_path, "r") as f:
-            used_combinations = set(tuple(x) for x in json.load(f))
-    else:
-        used_combinations = set()
+    #if os.path.exists(used_combinations_path):
+    #    with open(used_combinations_path, "r") as f:
+    #        used_combinations = set(tuple(x) for x in json.load(f))
+    #else:
+    #    used_combinations = set()
 
     backgrounds = os.listdir(background_folder)
     foregrounds = os.listdir(foreground_folder)
@@ -147,12 +182,12 @@ def get_unique_image_triplet(background_folder, foreground_folder, mask_folder, 
     }
 
 
-def get_pair_fopa(used_combinations_filename):
+def get_pair_fopa(used_combinations_path):
     data_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'dataset')
     background_folder = os.path.join(data_dir, 'background')
     foreground_folder = os.path.join(data_dir, 'foreground')
     mask_folder = os.path.join(data_dir, 'foreground_mask')
-    used_combinations_path = os.path.join(data_dir, used_combinations_filename)
+    #used_combinations_path = os.path.join(data_dir, used_combinations_filename)
     #samples  = []
     #for i in range(number):
     pair = get_unique_image_triplet(background_folder, foreground_folder, mask_folder, used_combinations_path)
@@ -162,7 +197,7 @@ def get_pair_fopa(used_combinations_filename):
     return pair
 
 
-def get_custom_bbox(combinations_json, area_coverage):
+def get_custom_bbox(combinations_path, area_coverage):
     '''
     Uses the FOPA Model to extract possible location bounding boxes and then calculates their center. It then uses this coordinate,
     and the aspect ratio of the bounding box of the corresponding foreground object to get tailored bounding boxes, but still centered
@@ -173,22 +208,29 @@ def get_custom_bbox(combinations_json, area_coverage):
     task_name = 'fopa_heat_map'
 
     # Collects a pairwise sample that has not been used before
-    pair = get_pair_fopa(used_combinations_filename=combinations_json)
+    pair = get_pair_fopa(used_combinations_path=combinations_path)
 
     #print('Pairs List: ', pairs_list)
     #print('Pairs List[:1] ', pairs_list[:1])
 
-    result_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'dataset/results', task_name)
-    if os.path.exists(result_dir):
-        shutil.rmtree(result_dir)
-    os.makedirs(result_dir, exist_ok=True)
-    os.makedirs(os.path.join(result_dir, 'grid'), exist_ok=True)
+    base_result_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'dataset/results', task_name)
+
+    unique_id = get_next_unique_number()
+    result_dir = os.path.join(base_result_dir, unique_id)
+    os.makedirs(os.path.join(result_dir, 'cache'), exist_ok=True)
+    os.makedirs(os.path.join(result_dir, 'heatmap'), exist_ok=True)
+
+    #if os.path.exists(result_dir):
+    #    shutil.rmtree(result_dir)
+    #os.makedirs(result_dir, exist_ok=True)
+    #os.makedirs(os.path.join(result_dir, 'grid'), exist_ok=True)
     
     net = FOPAHeatMapModel(device=0)
     #for pair in pairs_list:
 
     #print('Pair: ', pair)
-    renamed_pair = rename_pair_images_to_number(file_paths_dict=pair)
+    unique_number = int(uuid.uuid4().int % 1e4)  # 4-digit unique number
+    renamed_pair = rename_pair_images_to_number(file_paths_dict=pair, new_number=unique_number)
     #print('Renamed Pair: ', renamed_pair)
     fg_img, fg_mask, bg_img = renamed_pair['foreground'], renamed_pair['foreground_mask'], renamed_pair['background']
     bboxes, heatmaps = net(fg_img, fg_mask, bg_img, 
@@ -240,20 +282,51 @@ def get_custom_bbox(combinations_json, area_coverage):
         # Validation
         if x1 >= 0 and y1 >= 0 and x2 <= bg_width and y2 <= bg_height:
             valid_bboxes.append(custom_bbox)
-            print("✅ Custom bbox fits in background.")
+            #print("✅ Custom bbox fits in background.")
             break
-        else:
-            print("❌ Custom bbox goes outside background bounds. Trying other FOPA center coordinates.")
+        #else:
+            #print("❌ Custom bbox goes outside background bounds. Trying other FOPA center coordinates.")
 
     if not valid_bboxes: # If no bbox is valid, because they are out of bounds
-        print('NO BOUNDING BOXES FIT, FETCHING ANOTHER PAIR...')
+        #print('NO BOUNDING BOXES FIT, FETCHING ANOTHER PAIR...')
         #get_custom_bbox(combinations_json)
         return None
     else:
         pair['bbox'] = custom_bbox #You choose only one of the bboxes
         return pair
 
-        
+
+def find_valid_bbox(combinations_json, area_coverage, max_workers=3, timeout=30):
+    """
+    Runs up to `max_workers` processes to concurrently try to find a valid bounding box.
+    Stops as soon as one valid pair is found, and cancels the rest.
+    Includes timeout and error handling to avoid CUDA overloads and sync issues.
+    """
+    #print(f"🧠 Starting bbox search with {max_workers} workers...")
+    with concurrent.futures.ProcessPoolExecutor(max_workers=max_workers) as executor:
+        # Launch workers
+        futures = {executor.submit(get_custom_bbox, combinations_json, area_coverage): i for i in range(max_workers)}
+        start_time = time.time()
+
+        while time.time() - start_time < timeout:
+            for future in concurrent.futures.as_completed(futures, timeout=timeout):
+                worker_id = futures[future]
+                try:
+                    result = future.result(timeout=timeout)
+                    if result is not None:
+                        print(f"✅ [Worker {worker_id}] Valid bbox found.")
+                        # Cancel remaining tasks
+                        for f in futures:
+                            if not f.done():
+                                f.cancel()
+                        return result
+                    else:
+                        print(f"❌ [Worker {worker_id}] No valid bbox.")
+                except Exception as e:
+                    print(f"💥 [Worker {worker_id}] Error: {e}")
+        print("⚠️ Timeout or all workers failed. No valid bbox found. Continuing...")
+        return None
+
 
 def naive_composition(pair):
     #task_name = 'naive_composition'
@@ -299,44 +372,57 @@ def naive_composition(pair):
 
 if __name__ == '__main__':
     result_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'dataset/results', 'training_set')
-    comp_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'dataset/results', 'naive_composition')
+    #comp_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'dataset/results', 'naive_composition')
     #if os.path.exists(result_dir):
     #    shutil.rmtree(result_dir)
     os.makedirs(result_dir, exist_ok=True)
-    os.makedirs(comp_dir, exist_ok=True)
+    #os.makedirs(comp_dir, exist_ok=True)
     
-    json_filename='used_combinations.json'
+    combinations_json='dataset/used_combinations.json'
+    foreground_labels = helper_functions.load_json(json_file='dataset/foreground/foreground_labels.json')
+    training_labels_json = os.path.join(result_dir, 'training_labels.json')
+    
+    if os.path.exists(combinations_json):
+        os.remove(combinations_json)
+    
+    if os.path.exists(training_labels_json):
+        os.remove(training_labels_json)
 
-
+    
+    #number_workers = os.cpu_count() - 2
     render_number = 10
-    pair = None
 
-    for i in range(render_number):
-
+    for i in range(1, render_number+1):
+        pair = None
         # -------------- Get Bounding Box ----------------------------------------------------
 
-        while pair == None: #While there isn't an appropriate bounding box 
-            pair = get_custom_bbox(combinations_json='used_combinations.json', area_coverage=0.10)
+        while pair is None: #While there isn't an appropriate bounding box 
+            pair = find_valid_bbox(combinations_json, area_coverage=0.10, max_workers=3)
 
         bbox = pair['bbox'] # In (x1, y1, x2, y2) format
         # -------------- Naive Composition ----------------------------------------------------
         
         comp_img, comp_mask = naive_composition(pair)
         comp_img_name = f'img{i}.png'
-        comp_mask_name = f'img{i}_mask.png'
-        comp_img_dir = os.path.join(comp_dir, comp_img_name)
-        comp_mask_dir = os.path.join(comp_dir, comp_mask_name)
+        #comp_mask_name = f'img{i}_mask.png'
+        comp_img_dir = os.path.join(result_dir, comp_img_name)
+        #comp_mask_dir = os.path.join(comp_dir, comp_mask_name)
         cv2.imwrite(comp_img_dir, comp_img)
-        cv2.imwrite(comp_mask_dir, comp_mask)
+        #cv2.imwrite(comp_mask_dir, comp_mask)
 
         # -------------- Color Transfer ----------------------------------------------------
 
-        transf_img = color_transfer(comp_img, comp_mask)
-        pair = None
+        '''transf_img = color_transfer(comp_img, comp_mask)
 
         transf_img_name = comp_img_name
         transf_img_dir = os.path.join(result_dir, transf_img_name)
-        cv2.imwrite(transf_img_dir, transf_img)
+        cv2.imwrite(transf_img_dir, transf_img)'''
         
         #comp_img_name = f'img{i}.png'
         #cv2.imwrite(os.path.join(result_dir, comp_img_name), comp_img)
+
+        # ------------- Generate Labels --------------------------------------------------
+
+        labeler.generate_training_labels(foreground_labels_list=foreground_labels, training_labels_path=training_labels_json,
+                                         pair=pair, comp_img_name=comp_img_name)
+        

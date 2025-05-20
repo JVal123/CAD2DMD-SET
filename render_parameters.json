@@ -10,9 +10,9 @@
         "focal_length": [40, 200]
     },
     "object": {
-        "x_rotation": [-50, 50],
+        "x_rotation": [-30, 30],
         "y_rotation": [-20, 20],
-        "z_rotation": [-90, 90],
+        "z_rotation": [-60, 60],
         "negative_case": {
             "prob": 0.05,
             "z_rotation": [-90, -270]

@@ -300,7 +300,6 @@ def get_qa_pair(device_type, mode, value, json_dict, random_generator):
 
 
 def generate_labels(csv_filepath, mappings_json, labels_json, random_generator):
-    print('Generating labels...')
 
     # Load json files
     mappings_dict = helper_functions.load_json(mappings_json)
@@ -343,7 +342,46 @@ def generate_labels(csv_filepath, mappings_json, labels_json, random_generator):
         json.dump(labels_list, file, indent=4)
 
 
-def labels_in_tsv(json_path, image_dir, tsv_path, is_test_split=False):    
+def generate_training_labels(foreground_labels_list, training_labels_path, pair, comp_img_name):
+    """
+    Appends the appropriate question-answer pair to the training_labels JSON file
+    based on the name of the foreground image.
+
+    Args:
+        foreground_labels_list (list): List of label dicts with keys 'image', 'question', 'answer'.
+        training_labels_path (str): File path to the JSON file that will be loaded and updated.
+        pair (dict): Dictionary with a 'foreground' key pointing to a file path.
+        comp_img_name (str): The final composed image filename to use as the 'image' field.
+
+    Returns:
+        None. The function updates the JSON file at training_labels_path in place.
+    """
+    # Load the training labels JSON file (delete if it already exists)
+    training_labels_list = helper_functions.load_json(training_labels_path, initializer=[])
+
+    if not isinstance(training_labels_list, list):
+        training_labels_list = []
+
+    # Extract the base name of the foreground image (e.g., "img1" from "path/to/img1.png")
+    foreground_basename = os.path.splitext(os.path.basename(pair['foreground']))[0]
+
+    # Find and append the matching QA pair
+    for label in foreground_labels_list:
+        if label['image'] == foreground_basename:
+            new_entry = {
+                "image": comp_img_name,
+                "question": label['question'],
+                "answer": label['answer']
+            }
+            training_labels_list.append(new_entry)
+            break
+
+    # Save the updated training labels back to the JSON file
+    with open(training_labels_path, 'w') as f:
+        json.dump(training_labels_list, f, indent=4)
+
+
+def labels_in_tsv(json_path, image_dir, tsv_path):    
     """
     Converts a JSON label file to a TSV format with base64-encoded images.
     
@@ -351,7 +389,6 @@ def labels_in_tsv(json_path, image_dir, tsv_path, is_test_split=False):
         json_path (str): Path to the input labels.json
         image_dir (str): Path to the directory containing image files
         tsv_path (str): Path where the output TSV will be saved
-        is_test_split (bool): If True, 'answer' field will be left empty
     """
    
    # Load the JSON data
@@ -370,7 +407,7 @@ def labels_in_tsv(json_path, image_dir, tsv_path, is_test_split=False):
             "index": idx,
             "image": image_base64,
             "question": item["question"],
-            "answer": "" if is_test_split else item.get("answer", "")
+            "answer": item["answer"]
         })
 
     df = pd.DataFrame(rows)
@@ -400,7 +437,10 @@ if __name__=="__main__":
     rng = np.random.default_rng(seed=42)
 
     print("Creating test set labels json file... ")
-
     generate_labels(csv_file, mappings_json=roi_filepath, labels_json='test.json', random_generator=rng)
+    print("Test json file created! ")
+
+    print("Creating test set labels tsv file... ")
+    labels_in_tsv(json_path='test.json', image_dir='test_set', tsv_path='test.tsv')
 
     print("Label Generation Stage Complete! ✅")
