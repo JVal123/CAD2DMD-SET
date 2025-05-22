@@ -13,6 +13,7 @@ import helper_functions
 from shapely.geometry import Polygon
 from shapely.geometry import MultiPoint, box as shapely_box
 from shapely.ops import unary_union
+import gc
 
 
 
@@ -93,6 +94,28 @@ class DataGenerator:
         bpy.context.scene.render.resolution_x = dictionary["settings"]["resolution"][0]  # Set resolution
         bpy.context.scene.render.resolution_y = dictionary["settings"]["resolution"][1]
         bpy.context.scene.render.image_settings.file_format = dictionary["settings"]["file_format"]  # Output format
+
+    def full_cleanup(self):
+        for img in bpy.data.images:
+            if (
+                img.users == 0 and 
+                not img.packed_file and 
+                not img.is_dirty and 
+                img.name not in ['Render Result', 'Viewer Node']
+            ):
+                bpy.data.images.remove(img)
+
+        for mat in bpy.data.materials:
+            if mat.users == 0 and mat.name != 'Display':
+                bpy.data.materials.remove(mat)
+
+        for tex in bpy.data.textures:
+            if tex.users == 0:
+                bpy.data.textures.remove(tex)
+
+        gc.collect()
+        bpy.context.view_layer.update()
+
 
     # ------ Blender Objects Functions --------------------
 
@@ -510,31 +533,34 @@ class DataGenerator:
         else:
             print("Error: Selected object is not a mesh.")
 
+        nodes = mat.node_tree.nodes
+
         # Get the BSDF shader node
-        bsdf = mat.node_tree.nodes["Principled BSDF"]
+        bsdf = nodes["Principled BSDF"]
 
         # Create an Image Texture node
-        tex_image = mat.node_tree.nodes.new('ShaderNodeTexImage')
+        tex_image = nodes.new('ShaderNodeTexImage')
         tex_image.image = bpy.data.images.load(image_path)
 
         # Create a ColorRamp node
-        color_ramp = mat.node_tree.nodes.new('ShaderNodeValToRGB')
+        color_ramp = nodes.new('ShaderNodeValToRGB')
 
         # Create shader nodes
-        mix_shader = mat.node_tree.nodes.new('ShaderNodeMixShader')  # Mix reflection and BSDF
-        output = mat.node_tree.nodes.new('ShaderNodeOutputMaterial')  # Material output
+        mix_shader =nodes.new('ShaderNodeMixShader')  # Mix reflection and BSDF
+        output = nodes.new('ShaderNodeOutputMaterial')  # Material output
 
         # Create a Glossy BSDF for reflections
-        glossy = mat.node_tree.nodes.new('ShaderNodeBsdfGlossy')
+        glossy = nodes.new('ShaderNodeBsdfGlossy')
         glossy.inputs['Roughness'].default_value = 0.1  # Adjust reflectivity
 
         # Create a Fresnel node to control reflections
-        fresnel = mat.node_tree.nodes.new('ShaderNodeFresnel')
+        fresnel = nodes.new('ShaderNodeFresnel')
         fresnel.inputs['IOR'].default_value = 1.45  # Index of refraction for glass-like reflections
 
         # Adjust ColorRamp settings
         color_ramp.color_ramp.elements[0].position = 0.0  # Black (text)
         color_ramp.color_ramp.elements[0].color = (0, 0, 0, 1)  # Keep text black
+
 
         with open(display_color_path, 'r') as file:
             colors = json.load(file)
@@ -618,7 +644,6 @@ class DataGenerator:
         
         if not os.path.exists(output_dir):
             os.makedirs(output_dir)
-
 
         # Enable relevant render passes
         view_layer = bpy.context.scene.view_layers["ViewLayer"]

@@ -130,25 +130,29 @@ if __name__ == "__main__":
 
             #print('Model path: ', model_path)
 
-            # Open the .blend file
-            bpy.ops.wm.open_mainfile(filepath=model_path)
-
-            camera = bpy.data.objects.get("Camera")
-            light = bpy.data.objects.get("Light")
-            object = bpy.data.objects['3DModel']
-
             
-            render_generator.set_render_settings(render_parameters)
 
-            initial_rotation = copy.deepcopy(object.rotation_euler)
+            face_index = render_generator.get_json_value(model_name, indices_filepath)
+            face_uv_rotation = render_generator.get_json_value(model_name, face_uv_rotation_filepath)
 
             for i in range(counter, render_number + counter):
+
+                # Open the .blend file
+                bpy.ops.wm.open_mainfile(filepath=model_path)
+
+                camera = bpy.data.objects.get("Camera")
+                light = bpy.data.objects.get("Light")
+                object = bpy.data.objects['3DModel']
+
+                initial_rotation = copy.deepcopy(object.rotation_euler)
+                
+                render_generator.set_render_settings(render_parameters)
 
                 #display_visibility_ratio = 0
                 full_object_visibility = False
 
-                face_index = render_generator.get_json_value(model_name, indices_filepath)
-                face_uv_rotation = render_generator.get_json_value(model_name, face_uv_rotation_filepath)
+                #face_index = render_generator.get_json_value(model_name, indices_filepath)
+                #face_uv_rotation = render_generator.get_json_value(model_name, face_uv_rotation_filepath)
                 #random_image = render_script.get_random_image(f'images/generated/{model_name}')
                 random_image, mode, measurement = helper_functions.get_random_image(f'displays/images/generated/{model_name}')
                 display_color = render_generator.add_display_texture(object, face_index, face_uv_rotation, image_path=random_image, display_color_path=display_colors_filepath)
@@ -187,6 +191,9 @@ if __name__ == "__main__":
                         "Light Distance Y": y_distance, "Light Distance Z": z_distance, "Motion Blur Kernel Parameters [x, y, size]": False}
 
                 helper_functions.write_to_csv(csv_file, row, columns)
+
+    # Blender cleanup
+    render_generator.full_cleanup()
     
     helper_functions.rename_images_in_folder(foreground_path)
     helper_functions.rename_images_in_folder(output_passes_path)
