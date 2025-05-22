@@ -20,6 +20,7 @@ if __name__ == "__main__":
     parser.add_argument('-background_path', type=str, help='Add the path to the background images.', dest="background_path", default='dataset/background')
     parser.add_argument('-mask_path', type=str, help='Add the path to the foreground mask images.', dest="mask_path", default='dataset/foreground_mask')
     parser.add_argument('-output_passes_path', type=str, help='Add the path to the output passes images.', dest="output_passes_path", default='dataset/output_passes')
+    parser.add_argument('-displays_path', type=str, help='Add the path to the displays folder.', dest="displays_path", default='displays')
     parser.add_argument('-display_number', type=int, help='Define number of display images per device.', dest='display_number', default=10)
     parser.add_argument('-render_number', type=int, help='Define number of render images per device.', dest='render_number', default=10)
     parser.add_argument('-p', '-prob', type=float, help='Add the probability.', dest='prob', default=None)
@@ -29,6 +30,7 @@ if __name__ == "__main__":
     background_path = args.background_path
     mask_path = args.mask_path
     output_passes_path = args.output_passes_path
+    displays_path = args.displays_path
     display_number = args.display_number
     render_number = args.render_number
     prob = args.prob
@@ -49,13 +51,19 @@ if __name__ == "__main__":
 
     roi_filepath = os.path.abspath("displays/roi_mappings.json")
     roi_dictionary = helper_functions.load_json(roi_filepath)
+    used_combinations_path = os.path.join(displays_path, 'images/generated/used_combinations.json')
+
+    if os.path.exists(used_combinations_path):
+        os.remove(used_combinations_path)
 
     #Force display number to be much higher than render number to reduce chances of choosing the same measurement twice
-    display_number = 5*render_number
+    #display_number = 5*render_number
+
 
     for device_name in device_list:
         image_number = helper_functions.count_folder_images(f'displays/images/generated/{device_name}')
-        if image_number >= display_number:
+        max_image_number, is_actual_max = display_generator.maximum_display_images(device=device_name, roi_data=roi_dictionary, display_number=display_number)
+        if image_number >= display_number or image_number >= max_image_number:
             print(f'The {device_name} display images are already generated. Advancing to next device...')
         else:
             print(f'Generating {device_name} display images:')
@@ -63,9 +71,21 @@ if __name__ == "__main__":
             #img, thresh_value, img_height, img_width, mode = display_generator.remove_background(thresh_value, img_height, img_width, device=device_name, select_threshold=True)
             #x, y, width, height = display_generator.change_measurement(img, device=device_name, mode=mode, x=x, y=y, w=width, h=height, selectROI=True)
 
-            for i in range(image_number, display_number):
-                img, mode, list_index = display_generator.remove_background(device=device_name, dictionary=roi_dictionary)
-                display_generator.change_measurement(img, device=device_name, mode=mode, dictionary=roi_dictionary, json_path=roi_filepath, index=list_index)
+            generated = image_number
+            while generated < max_image_number:
+            #for i in range(image_number, max_image_number):
+                #print('Iteration: ', generated)
+                success = display_generator.generate_random_unique_image(device=device_name, display_number=max_image_number, actual_max=is_actual_max, 
+                                                                         roi_json_path=roi_filepath, used_path=used_combinations_path)
+                
+                if success:
+                    generated += 1
+                else:
+                    #print(f"No more unique combinations left for {device_name}.")
+                    break
+                
+                #img, mode, list_index = display_generator.remove_background(device=device_name, dictionary=roi_dictionary)
+                #display_generator.change_measurement(img, device=device_name, mode=mode, dictionary=roi_dictionary, json_path=roi_filepath, index=list_index)
 
     print('Display Generation Stage Complete! ✅')
     
