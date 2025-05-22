@@ -614,24 +614,21 @@ class DataGenerator:
         output_node.format.file_format = 'PNG'
         tree.links.new(render_layers.outputs[node_output_name], output_node.inputs[0])
 
-    def img_passes(self, image_name, output_dir):
-        # Set output directory
-        #output_dir = os.path.join(self.output_folder, "output_passes")
+    def img_passes(self, image_name, output_dir, extra_passes=False):
         
         if not os.path.exists(output_dir):
             os.makedirs(output_dir)
-
-        #if os.path.exists(output_dir):
-        #    shutil.rmtree(output_dir)
-        #os.makedirs(output_dir, exist_ok=True)
 
 
         # Enable relevant render passes
         view_layer = bpy.context.scene.view_layers["ViewLayer"]
         view_layer.use_pass_combined = True  # Full Render
-        view_layer.use_pass_diffuse_color = True  # Albedo (Base Color)
-        view_layer.use_pass_diffuse_direct = True  # Direct Diffuse Light (Shading approximation)
-        view_layer.use_pass_normal = True  # Normal Map
+
+        if extra_passes:
+            view_layer.use_pass_diffuse_color = True  # Albedo (Base Color)
+            view_layer.use_pass_diffuse_direct = True  # Direct Diffuse Light (Shading approximation)
+            view_layer.use_pass_normal = True  # Normal Map
+
         view_layer.use_pass_z = True  # Depth Pass 
 
         # Set output settings
@@ -648,10 +645,12 @@ class DataGenerator:
 
         # Create output nodes for different passes
         self.create_output_node(tree, render_layers, output_dir=self.output_folder, render_name=image_name, node_output_name="Image")
-        self.create_output_node(tree, render_layers, output_dir=os.path.join(output_dir, "albedo"), render_name=f"{image_name}_albedo", node_output_name="DiffCol")
-        self.create_output_node(tree, render_layers, output_dir=os.path.join(output_dir, "shading"), render_name=f"{image_name}_shading", node_output_name="DiffDir")
-        self.create_output_node(tree, render_layers, output_dir=os.path.join(output_dir, "normal"), render_name=f"{image_name}_normal", node_output_name="Normal")
-        #self.create_output_node(tree, render_layers, output_dir=os.path.join(output_dir, "depth"), render_name=f"{image_name}_depth", node_output_name="Depth")
+        
+        if extra_passes:
+            self.create_output_node(tree, render_layers, output_dir=os.path.join(output_dir, "albedo"), render_name=f"{image_name}_albedo", node_output_name="DiffCol")
+            self.create_output_node(tree, render_layers, output_dir=os.path.join(output_dir, "shading"), render_name=f"{image_name}_shading", node_output_name="DiffDir")
+            self.create_output_node(tree, render_layers, output_dir=os.path.join(output_dir, "normal"), render_name=f"{image_name}_normal", node_output_name="Normal")
+
 
         # ------ Normalizing Depth Pass ------
         depth_output_dir = os.path.join(output_dir, "depth")
