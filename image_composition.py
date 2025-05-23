@@ -10,7 +10,8 @@ import helper_functions
 import sys
 import labeler
 from PIL import Image
-import concurrent.futures
+from multiprocessing import Process, Queue
+#import concurrent.futures
 import uuid
 from filelock import FileLock
 
@@ -130,16 +131,16 @@ def restore_pair_images_name(originals, renamed):
 
 def get_unique_image_triplet(background_folder, foreground_folder, mask_folder, used_combinations_path):
     
-    lock_path = used_combinations_path + ".lock"
-    with FileLock(lock_path):  # Ensures exclusive access
-        if os.path.exists(used_combinations_path):
-            with open(used_combinations_path, "r") as f:
-                try:
-                    used_combinations = set(tuple(x) for x in json.load(f))
-                except json.JSONDecodeError:
-                    used_combinations = set()
-        else:
-            used_combinations = set()
+    #lock_path = used_combinations_path + ".lock"
+    #with FileLock(lock_path):  # Ensures exclusive access
+    if os.path.exists(used_combinations_path):
+        with open(used_combinations_path, "r") as f:
+            try:
+                used_combinations = set(tuple(x) for x in json.load(f))
+            except json.JSONDecodeError:
+                used_combinations = set()
+    else:
+        used_combinations = set()
     
     
     # Load existing used combinations
@@ -149,8 +150,16 @@ def get_unique_image_triplet(background_folder, foreground_folder, mask_folder, 
     #else:
     #    used_combinations = set()
 
-    backgrounds = os.listdir(background_folder)
-    foregrounds = os.listdir(foreground_folder)
+    #backgrounds = os.listdir(background_folder)
+    #foregrounds = os.listdir(foreground_folder)
+
+    valid_image_exts = {'.jpg', '.jpeg', '.png', '.bmp', '.tiff'}
+
+    backgrounds = [f for f in os.listdir(background_folder)
+                if os.path.isfile(os.path.join(background_folder, f)) and os.path.splitext(f)[1].lower() in valid_image_exts]
+
+    foregrounds = [f for f in os.listdir(foreground_folder)
+                if os.path.isfile(os.path.join(foreground_folder, f)) and os.path.splitext(f)[1].lower() in valid_image_exts]
 
     max_combinations = len(backgrounds) * len(foregrounds)
 
@@ -197,7 +206,7 @@ def get_pair_fopa(used_combinations_path):
     return pair
 
 
-def get_custom_bbox(combinations_path, area_coverage):
+def get_custom_bbox(net, combinations_path, area_coverage):
     '''
     Uses the FOPA Model to extract possible location bounding boxes and then calculates their center. It then uses this coordinate,
     and the aspect ratio of the bounding box of the corresponding foreground object to get tailored bounding boxes, but still centered
@@ -210,9 +219,6 @@ def get_custom_bbox(combinations_path, area_coverage):
     # Collects a pairwise sample that has not been used before
     pair = get_pair_fopa(used_combinations_path=combinations_path)
 
-    #print('Pairs List: ', pairs_list)
-    #print('Pairs List[:1] ', pairs_list[:1])
-
     base_result_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'dataset/results', task_name)
 
     unique_id = get_next_unique_number()
@@ -220,25 +226,16 @@ def get_custom_bbox(combinations_path, area_coverage):
     os.makedirs(os.path.join(result_dir, 'cache'), exist_ok=True)
     os.makedirs(os.path.join(result_dir, 'heatmap'), exist_ok=True)
 
-    #if os.path.exists(result_dir):
-    #    shutil.rmtree(result_dir)
-    #os.makedirs(result_dir, exist_ok=True)
-    #os.makedirs(os.path.join(result_dir, 'grid'), exist_ok=True)
-    
-    net = FOPAHeatMapModel(device=0)
-    #for pair in pairs_list:
-
-    #print('Pair: ', pair)
     unique_number = int(uuid.uuid4().int % 1e4)  # 4-digit unique number
     renamed_pair = rename_pair_images_to_number(file_paths_dict=pair, new_number=unique_number)
-    #print('Renamed Pair: ', renamed_pair)
+
     fg_img, fg_mask, bg_img = renamed_pair['foreground'], renamed_pair['foreground_mask'], renamed_pair['background']
     bboxes, heatmaps = net(fg_img, fg_mask, bg_img, 
                 cache_dir=os.path.join(result_dir, 'cache'), 
                 heatmap_dir=os.path.join(result_dir, 'heatmap'))
-    #print('Bbox: ', bboxes)
+ 
     restore_pair_images_name(originals=pair, renamed=renamed_pair) #Rename filenames so that all combinations are possible
-    #print('Restored Pair: ', restored_pair)
+  
 
     _, _, w, h = helper_functions.get_bounding_box_xywh(pair['foreground_mask']) #Foreground object bounding box information
     aspect_ratio = w/h
@@ -282,50 +279,17 @@ def get_custom_bbox(combinations_path, area_coverage):
         # Validation
         if x1 >= 0 and y1 >= 0 and x2 <= bg_width and y2 <= bg_height:
             valid_bboxes.append(custom_bbox)
-            #print("✅ Custom bbox fits in background.")
+            print("✅ Custom bbox fits in background.")
             break
-        #else:
-            #print("❌ Custom bbox goes outside background bounds. Trying other FOPA center coordinates.")
+        else:
+            print("❌ Custom bbox goes outside background bounds. Trying other FOPA center coordinates.")
 
     if not valid_bboxes: # If no bbox is valid, because they are out of bounds
-        #print('NO BOUNDING BOXES FIT, FETCHING ANOTHER PAIR...')
-        #get_custom_bbox(combinations_json)
+        print('NO BOUNDING BOXES FIT, FETCHING ANOTHER PAIR...')
         return None
     else:
         pair['bbox'] = custom_bbox #You choose only one of the bboxes
         return pair
-
-
-def find_valid_bbox(combinations_json, area_coverage, max_workers=3, timeout=30):
-    """
-    Runs up to `max_workers` processes to concurrently try to find a valid bounding box.
-    Stops as soon as one valid pair is found, and cancels the rest.
-    Includes timeout and error handling to avoid CUDA overloads and sync issues.
-    """
-    #print(f"🧠 Starting bbox search with {max_workers} workers...")
-    with concurrent.futures.ProcessPoolExecutor(max_workers=max_workers) as executor:
-        # Launch workers
-        futures = {executor.submit(get_custom_bbox, combinations_json, area_coverage): i for i in range(max_workers)}
-        start_time = time.time()
-
-        while time.time() - start_time < timeout:
-            for future in concurrent.futures.as_completed(futures, timeout=timeout):
-                worker_id = futures[future]
-                try:
-                    result = future.result(timeout=timeout)
-                    if result is not None:
-                        print(f"✅ [Worker {worker_id}] Valid bbox found.")
-                        # Cancel remaining tasks
-                        for f in futures:
-                            if not f.done():
-                                f.cancel()
-                        return result
-                    else:
-                        print(f"❌ [Worker {worker_id}] No valid bbox.")
-                except Exception as e:
-                    print(f"💥 [Worker {worker_id}] Error: {e}")
-        print("⚠️ Timeout or all workers failed. No valid bbox found. Continuing...")
-        return None
 
 
 def naive_composition(pair):
@@ -368,6 +332,24 @@ def naive_composition(pair):
     return comp_img, comp_mask
 
 
+def worker_process(worker_id, gpu_id, combinations_json, area_coverage, queue):
+    try:
+        os.environ['CUDA_VISIBLE_DEVICES'] = str(gpu_id)
+        net = FOPAHeatMapModel(device=0)
+        pair = None
+        while pair is None:
+            pair = get_custom_bbox(net, combinations_json, area_coverage)
+        comp_img, comp_mask = naive_composition(pair)
+        queue.put({
+            "comp_img": comp_img,
+            "Foreground": os.path.basename(pair["foreground"]),
+            "Foreground Mask": os.path.basename(pair["foreground_mask"]),
+            "Background": os.path.basename(pair["background"]),
+            "Bbox": pair["bbox"]
+        })
+    except Exception as e:
+        print(f"[Worker {worker_id}] Failed: {e}")
+        queue.put(None)
 
 
 if __name__ == '__main__':
@@ -395,50 +377,47 @@ if __name__ == '__main__':
     if os.path.exists(csv_file):
         os.remove(csv_file)
 
-    
-    #number_workers = os.cpu_count() - 2
-    render_number = 10
+    total_images = 10
+    workers_per_gpu = 3
 
-    for i in range(1, render_number+1):
-        pair = None
-        # -------------- Get Bounding Box ----------------------------------------------------
+    visible_gpus = list(range(len(os.environ.get("CUDA_VISIBLE_DEVICES", "0").split(","))))
+    gpu_ids = [gpu for gpu in visible_gpus for _ in range(workers_per_gpu)]
+    max_concurrent = len(gpu_ids)
 
-        while pair is None: #While there isn't an appropriate bounding box 
-            pair = find_valid_bbox(combinations_json, area_coverage=0.10, max_workers=3)
+    queue = Queue()
+    successful_count = 0
+    image_index = 1
 
-        bbox = pair['bbox'] # In (x1, y1, x2, y2) format
-        # -------------- Naive Composition ----------------------------------------------------
-        
-        comp_img, comp_mask = naive_composition(pair)
-        comp_img_name = f'img{i}.png'
-        #comp_mask_name = f'img{i}_mask.png'
-        comp_img_dir = os.path.join(result_dir, comp_img_name)
-        #comp_mask_dir = os.path.join(comp_dir, comp_mask_name)
-        cv2.imwrite(comp_img_dir, comp_img)
-        #cv2.imwrite(comp_mask_dir, comp_mask)
+    while successful_count < total_images:
+        processes = []
+        batch_size = min(max_concurrent, total_images - successful_count)
 
-        # -------------- Color Transfer ----------------------------------------------------
+        for i in range(batch_size):
+            gpu_id = gpu_ids[i % len(gpu_ids)]
+            p = Process(target=worker_process, args=(i, gpu_id, combinations_json, 0.10, queue))
+            p.start()
+            processes.append(p)
+            time.sleep(0.5)
 
-        '''transf_img = color_transfer(comp_img, comp_mask)
+        for _ in range(batch_size):
+            result = queue.get()
+            if result:
+                img_name = f"img{image_index}.png"
+                img_path = os.path.join(result_dir, img_name)
+                cv2.imwrite(img_path, result["comp_img"])
+                row = {
+                    "Composite": img_name,
+                    "Foreground": result["Foreground"],
+                    "Foreground Mask": result["Foreground Mask"],
+                    "Background": result["Background"],
+                    "Bbox": result["Bbox"]
+                }
+                helper_functions.write_to_csv(filename=csv_file, data=row, column_titles=columns)
+                image_index += 1
+                successful_count += 1
 
-        transf_img_name = comp_img_name
-        transf_img_dir = os.path.join(result_dir, transf_img_name)
-        cv2.imwrite(transf_img_dir, transf_img)'''
-        
-        #comp_img_name = f'img{i}.png'
-        #cv2.imwrite(os.path.join(result_dir, comp_img_name), comp_img)
+        for p in processes:
+            p.join()
 
-        # ------------- Create CSV File  --------------------------------------------------
-        foreground_image = os.path.basename(pair["foreground"])
-        foreground_mask_image = os.path.basename(pair["foreground_mask"])
-        background_image = os.path.basename(pair["background"])
-
-        row = {"Composite": comp_img_name, "Foreground": foreground_image, "Foreground Mask": foreground_mask_image, 
-               "Background": background_image, "Bbox": bbox}
-
-        helper_functions.write_to_csv(filename=csv_file, data=row, column_titles=columns)
-
-    # ----------------- Generate Labels --------------------------------------------------
-    
     labeler.generate_training_labels(training_csv=csv_file, foreground_labels_list=foreground_labels, training_labels_path=training_labels_json)
         
