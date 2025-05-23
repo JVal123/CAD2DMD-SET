@@ -334,8 +334,18 @@ def naive_composition(pair):
 
 def worker_process(worker_id, gpu_id, combinations_json, area_coverage, queue):
     try:
-        os.environ['CUDA_VISIBLE_DEVICES'] = str(gpu_id)
+        #os.environ['CUDA_VISIBLE_DEVICES'] = str(gpu_id)
+        # Map gpu_id to physical GPU via CUDA_VISIBLE_DEVICES filtering
+        visible_devices = os.environ.get("CUDA_VISIBLE_DEVICES", "0").split(",")
+
+        if gpu_id < len(visible_devices):
+            os.environ["CUDA_VISIBLE_DEVICES"] = visible_devices[gpu_id]
+        else:
+            raise ValueError(f"gpu_id {gpu_id} is out of bounds for available CUDA devices: {visible_devices}")
+
+        # Now 'device=0' refers to the specific GPU set above
         net = FOPAHeatMapModel(device=0)
+
         pair = None
         while pair is None:
             pair = get_custom_bbox(net, combinations_json, area_coverage)
@@ -378,10 +388,15 @@ if __name__ == '__main__':
         os.remove(csv_file)
 
     total_images = 10
-    workers_per_gpu = 3
+    workers_per_gpu = 10
 
-    visible_gpus = list(range(len(os.environ.get("CUDA_VISIBLE_DEVICES", "0").split(","))))
-    gpu_ids = [gpu for gpu in visible_gpus for _ in range(workers_per_gpu)]
+    #visible_gpus = list(range(len(os.environ.get("CUDA_VISIBLE_DEVICES", "0").split(","))))
+    #gpu_ids = [gpu for gpu in visible_gpus for _ in range(workers_per_gpu)]
+    #max_concurrent = len(gpu_ids)
+
+    cuda_visible = os.environ.get("CUDA_VISIBLE_DEVICES", "0").split(",")
+    num_visible = len(cuda_visible)
+    gpu_ids = list(range(workers_per_gpu * num_visible))
     max_concurrent = len(gpu_ids)
 
     queue = Queue()
@@ -393,7 +408,9 @@ if __name__ == '__main__':
         batch_size = min(max_concurrent, total_images - successful_count)
 
         for i in range(batch_size):
-            gpu_id = gpu_ids[i % len(gpu_ids)]
+            #gpu_id = gpu_ids[i % len(gpu_ids)]
+            #p = Process(target=worker_process, args=(i, gpu_id, combinations_json, 0.10, queue))
+            gpu_id = i % num_visible  # ensures device=0,1,... remapped
             p = Process(target=worker_process, args=(i, gpu_id, combinations_json, 0.10, queue))
             p.start()
             processes.append(p)
