@@ -35,12 +35,29 @@ from reinhard import color_transfer
 # Global model variable
 net = None
 
-def init_worker():
-    """Initialize the FOPA model once per worker process."""
-    global net
-    os.environ['CUDA_VISIBLE_DEVICES'] = '0'  # Or leave it unset if you're only using one GPU
-    net = FOPAHeatMapModel(device=0)
+#def init_worker(gpu_id):
+#    """Initialize the FOPA model once per worker process."""
+#    global net
+#    os.environ['CUDA_VISIBLE_DEVICES'] = str(gpu_id)
+#    net = FOPAHeatMapModel(device=0)
 
+def init_worker(logical_gpu_id):
+    """
+    Initialize the FOPA model on the GPU specified by its logical index in CUDA_VISIBLE_DEVICES.
+    """
+    global net
+
+    # Get list of physical GPU IDs from the CUDA_VISIBLE_DEVICES environment variable
+    visible_devices = os.environ.get("CUDA_VISIBLE_DEVICES", "0").split(",")
+
+    if logical_gpu_id >= len(visible_devices):
+        raise ValueError(f"GPU index {logical_gpu_id} exceeds available devices: {visible_devices}")
+
+    # Set the CUDA_VISIBLE_DEVICES for this worker to the intended physical GPU ID
+    os.environ["CUDA_VISIBLE_DEVICES"] = visible_devices[logical_gpu_id].strip()
+
+    # FOPAHeatMapModel(device=0) will now use the correct physical GPU
+    net = FOPAHeatMapModel(device=0)
 
 def get_next_unique_number(counter_file='dataset/unique_id.txt'):
     lock = FileLock(counter_file + '.lock')
@@ -405,7 +422,6 @@ if __name__ == '__main__':
     foreground_labels = helper_functions.load_json(json_file='dataset/foreground/foreground_labels.json')
     training_labels_json = os.path.join(result_dir, 'training_labels.json')
 
-    # Clear old data
     if os.path.exists(combinations_json):
         os.remove(combinations_json)
     if os.path.exists(training_labels_json):
@@ -419,20 +435,42 @@ if __name__ == '__main__':
     # Configuration
     total_images = 10
     workers_per_gpu = 3
-    max_concurrent = workers_per_gpu  # using only one GPU
 
-    from multiprocessing import Pool
+    # Parse logical GPU IDs from CUDA_VISIBLE_DEVICES (e.g., "2,3")
+    cuda_visible = os.environ.get("CUDA_VISIBLE_DEVICES", "0")
+    visible_gpu_ids = [x.strip() for x in cuda_visible.split(",") if x.strip().isdigit()]
+    num_visible_gpus = len(visible_gpu_ids)
+    max_concurrent = num_visible_gpus * workers_per_gpu
+
+    #from multiprocessing import Pool
 
     image_index = 1
     successful_count = 0
 
-    with Pool(processes=max_concurrent, initializer=init_worker) as pool:
+    # One pool per logical GPU index
+    pools = []
+    for logical_gpu_id in range(num_visible_gpus):
+        pool = Pool(
+            processes=workers_per_gpu,
+            initializer=init_worker,
+            initargs=(logical_gpu_id,)
+        )
+        pools.append(pool)
+
+    try:
         while successful_count < total_images:
             remaining = total_images - successful_count
             batch_size = min(max_concurrent, remaining)
             batch_args = [(i, combinations_json, 0.10) for i in range(batch_size)]
 
-            for result in pool.map(worker_task, batch_args):
+            task_queue = []
+            for i, args in enumerate(batch_args):
+                pool = pools[i % num_visible_gpus]
+                result = pool.apply_async(worker_task, (args,))
+                task_queue.append((pool, result))
+
+            for pool, result_obj in task_queue:
+                result = result_obj.get()
                 if result:
                     img_name = f"img{image_index}.png"
                     img_path = os.path.join(result_dir, img_name)
@@ -450,12 +488,82 @@ if __name__ == '__main__':
                     image_index += 1
                     successful_count += 1
 
-    # Generate labels after all images are saved
+                if successful_count >= total_images:
+                    break
+
+    finally:
+        for pool in pools:
+            pool.close()
+            pool.join()
+
     labeler.generate_training_labels(
         training_csv=csv_file,
         foreground_labels_list=foreground_labels,
         training_labels_path=training_labels_json
     )
+    
+
+
+    #multiprocessing.set_start_method('spawn')
+
+    #result_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'dataset/results', 'training_set')
+    #os.makedirs(result_dir, exist_ok=True)
+
+    #combinations_json = 'dataset/used_combinations.json'
+    #foreground_labels = helper_functions.load_json(json_file='dataset/foreground/foreground_labels.json')
+    #training_labels_json = os.path.join(result_dir, 'training_labels.json')
+
+    ## Clear old data
+    #if os.path.exists(combinations_json):
+    #    os.remove(combinations_json)
+    #if os.path.exists(training_labels_json):
+    #    os.remove(training_labels_json)
+
+    #csv_file = os.path.join(result_dir, "training.csv")
+    #columns = ["Composite", "Foreground", "Foreground Mask", "Background", "Bbox"]
+    #if os.path.exists(csv_file):
+    #    os.remove(csv_file)
+
+    ## Configuration
+    #total_images = 10
+    #workers_per_gpu = 3
+    #max_concurrent = workers_per_gpu  # using only one GPU
+
+    #from multiprocessing import Pool
+
+    #image_index = 1
+    #successful_count = 0
+
+    #with Pool(processes=max_concurrent, initializer=init_worker) as pool:
+    #    while successful_count < total_images:
+    #        remaining = total_images - successful_count
+    #        batch_size = min(max_concurrent, remaining)
+    #        batch_args = [(i, combinations_json, 0.10) for i in range(batch_size)]
+
+    #        for result in pool.map(worker_task, batch_args):
+    #            if result:
+    #                img_name = f"img{image_index}.png"
+    #                img_path = os.path.join(result_dir, img_name)
+    #                cv2.imwrite(img_path, result["comp_img"])
+
+    #                row = {
+    #                    "Composite": img_name,
+    #                    "Foreground": result["Foreground"],
+    #                    "Foreground Mask": result["Foreground Mask"],
+    #                    "Background": result["Background"],
+    #                    "Bbox": result["Bbox"]
+    #                }
+    #                helper_functions.write_to_csv(filename=csv_file, data=row, column_titles=columns)
+
+    #                image_index += 1
+    #                successful_count += 1
+
+    ## Generate labels after all images are saved
+    #labeler.generate_training_labels(
+    #    training_csv=csv_file,
+    #    foreground_labels_list=foreground_labels,
+    #    training_labels_path=training_labels_json
+    #)
 
     '''multiprocessing.set_start_method('spawn')
 
