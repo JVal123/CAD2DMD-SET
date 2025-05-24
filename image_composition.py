@@ -10,6 +10,7 @@ import helper_functions
 import sys
 import labeler
 from PIL import Image
+import multiprocessing
 from multiprocessing import Process, Queue
 #import concurrent.futures
 import uuid
@@ -281,11 +282,11 @@ def get_custom_bbox(net, combinations_path, area_coverage):
             valid_bboxes.append(custom_bbox)
             print("✅ Custom bbox fits in background.")
             break
-        else:
-            print("❌ Custom bbox goes outside background bounds. Trying other FOPA center coordinates.")
+        #else:
+        #    print("❌ Custom bbox goes outside background bounds. Trying other FOPA center coordinates.")
 
     if not valid_bboxes: # If no bbox is valid, because they are out of bounds
-        print('NO BOUNDING BOXES FIT, FETCHING ANOTHER PAIR...')
+        #print('NO BOUNDING BOXES FIT, FETCHING ANOTHER PAIR...')
         return None
     else:
         pair['bbox'] = custom_bbox #You choose only one of the bboxes
@@ -363,6 +364,8 @@ def worker_process(worker_id, gpu_id, combinations_json, area_coverage, queue):
 
 
 if __name__ == '__main__':
+    multiprocessing.set_start_method('spawn')
+
     result_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'dataset/results', 'training_set')
     #comp_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'dataset/results', 'naive_composition')
     #if os.path.exists(result_dir):
@@ -388,7 +391,7 @@ if __name__ == '__main__':
         os.remove(csv_file)
 
     total_images = 10
-    workers_per_gpu = 10
+    workers_per_gpu = 3
 
     #visible_gpus = list(range(len(os.environ.get("CUDA_VISIBLE_DEVICES", "0").split(","))))
     #gpu_ids = [gpu for gpu in visible_gpus for _ in range(workers_per_gpu)]
