@@ -59,6 +59,7 @@ def init_worker(logical_gpu_id):
     # FOPAHeatMapModel(device=0) will now use the correct physical GPU
     net = FOPAHeatMapModel(device=0)
 
+
 def get_next_unique_number(counter_file='dataset/unique_id.txt'):
     lock = FileLock(counter_file + '.lock')
     with lock:
@@ -74,6 +75,79 @@ def get_next_unique_number(counter_file='dataset/unique_id.txt'):
             f.write(str(next_number))
 
     return str(next_number)
+
+
+def rescale_image_to_fixed_size(image_path, max_size=256):
+    """
+    Resizes an image so that its largest side equals `max_size`, preserving aspect ratio.
+
+    Args:
+        image_path (str): Path to the image.
+        max_size (int): Target size for the largest dimension.
+
+    Returns:
+        resized_img (PIL.Image): Resized image.
+        original_size (tuple): Original (width, height).
+        scale_factors (tuple): (scale_x, scale_y) used for resizing.
+    """
+    img = Image.open(image_path)
+    original_size = img.size  # (width, height)
+
+    orig_w, orig_h = original_size
+    if orig_w >= orig_h:
+        scale = max_size / orig_w
+    else:
+        scale = max_size / orig_h
+
+    new_w = int(orig_w * scale)
+    new_h = int(orig_h * scale)
+
+    resized_img = img.resize((new_w, new_h), Image.Resampling.LANCZOS)
+    return resized_img, original_size, (scale, scale)
+
+
+def rescale_bbox_to_original(bbox, scale_factors):
+    """
+    Rescales a bounding box from resized image back to original image size using scale factors.
+    Input bbox must be in [x, y, w, h] format.
+
+    Args:
+        bbox (list): [x, y, w, h] from resized image.
+        scale_factors (tuple): (scale_x, scale_y)
+
+    Returns:
+        list: Rescaled [x, y, w, h]
+    """
+    scale_x, scale_y = scale_factors
+    x, y, w, h = bbox
+
+    x = int(x / scale_x)
+    y = int(y / scale_y)
+    w = int(w / scale_x)
+    h = int(h / scale_y)
+
+    return [x, y, w, h]
+
+
+def save_temp_rescaled_image(rescaled_img, original_path):
+    """
+    Saves the rescaled image to a temporary file for FOPA inference.
+
+    Args:
+        rescaled_img (PIL.Image): Rescaled image object.
+        original_path (str): Path of the original image, to derive temp path.
+
+    Returns:
+        str: Path to the temporary saved rescaled image.
+    """
+
+    temp_folder = os.path.join(os.path.dirname(original_path), 'resized_backgrounds')
+    os.makedirs(temp_folder, exist_ok=True)
+    image_name = os.path.basename(original_path)
+    
+    temp_path = os.path.join(temp_folder, image_name)
+    rescaled_img.save(temp_path)
+    return temp_path
 
 
 def rename_pair_images_to_number(file_paths_dict, new_number=1674):
@@ -256,13 +330,21 @@ def get_custom_bbox(net, combinations_path, area_coverage):
     unique_number = int(uuid.uuid4().int % 1e4)  # 4-digit unique number
     renamed_pair = rename_pair_images_to_number(file_paths_dict=pair, new_number=unique_number)
 
-    fg_img, fg_mask, bg_img = renamed_pair['foreground'], renamed_pair['foreground_mask'], renamed_pair['background']
-    bboxes, heatmaps = net(fg_img, fg_mask, bg_img, 
+    # Rescale background image
+    rescaled_bg_img, _, background_scale_factors = rescale_image_to_fixed_size(renamed_pair['background'])
+    rescaled_bg_path = save_temp_rescaled_image(rescaled_bg_img, renamed_pair['background'])
+
+    #fg_img, fg_mask, bg_img = renamed_pair['foreground'], renamed_pair['foreground_mask'], renamed_pair['background']
+    fg_img, fg_mask = renamed_pair['foreground'], renamed_pair['foreground_mask']
+    bboxes, heatmaps = net(fg_img, fg_mask, rescaled_bg_path, 
                 cache_dir=os.path.join(result_dir, 'cache'), 
                 heatmap_dir=os.path.join(result_dir, 'heatmap'))
  
     restore_pair_images_name(originals=pair, renamed=renamed_pair) #Rename filenames so that all combinations are possible
   
+    # Clean up temporary rescaled background
+    if os.path.exists(rescaled_bg_path):
+        os.remove(rescaled_bg_path)
 
     _, _, w, h = helper_functions.get_bounding_box_xywh(pair['foreground_mask']) #Foreground object bounding box information
     aspect_ratio = w/h
@@ -279,10 +361,11 @@ def get_custom_bbox(net, combinations_path, area_coverage):
 
     for bbox in bboxes:
         #print('FOPA Bbox: ', bbox)
-        height = bbox[3]
-        width = bbox[2]
-        center_x = bbox[0] + (width)/2
-        center_y = bbox[1] + (height)/2
+        rescaled_bbox = rescale_bbox_to_original(bbox, background_scale_factors)
+        height = rescaled_bbox[3]
+        width = rescaled_bbox[2]
+        center_x = rescaled_bbox[0] + (width)/2
+        center_y = rescaled_bbox[1] + (height)/2
 
         custom_width = aspect_ratio*height #Custom width, in order for new bounding box to preserve foreground object aspect ratio
         
@@ -320,73 +403,23 @@ def get_custom_bbox(net, combinations_path, area_coverage):
 
 
 def naive_composition(pair):
-    #task_name = 'naive_composition'
-
-    #print('Pair: ', pair)
 
     bg_img = pair['background']
     fg_img = pair['foreground']
     fg_mask = pair['foreground_mask']
     custom_bbox = pair['bbox']
 
-    #Change bbox format from [x, y, w, h] to [x1, y1, x2, y2]
-    #x, y, w, h = fopa_bbox[0], fopa_bbox[1], fopa_bbox[2], fopa_bbox[3]
-    #bbox = [x, y, x+w, y+h]
+    #bg = cv2.imread(bg_img)
+    #fg = cv2.imread(fg_img)
+    #mask = cv2.imread(fg_mask, cv2.IMREAD_GRAYSCALE)
 
-    #print('Custom bbox: ', custom_bbox)
-
-    #result_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'dataset/results', task_name)
-    #if os.path.exists(result_dir):
-    #    shutil.rmtree(result_dir)
-    #os.makedirs(result_dir, exist_ok=True)
-    
-    
-    #fg_mask = test_dir + 'foreground_mask/' + img_name.replace('.jpg', '.png')
+    #print(f"[DEBUG] BG shape: {bg.shape}, FG shape: {fg.shape}, MASK shape: {mask.shape}")
+    #print(f"[DEBUG] BBOX: {custom_bbox}")
     
     # generate composite images by naive methods
     comp_img, comp_mask = get_composite_image(fg_img, fg_mask, bg_img, custom_bbox, 'none')
 
-    #comp_img_name = f'img{iteration}.png'
-    #comp_mask_name = f'img{iteration}_mask.png'
-    
-    #comp_img_dir = os.path.join(result_dir, comp_img_name)
-    #comp_mask_dir = os.path.join(result_dir, comp_mask_name)
-
-    #Saves images
-    #cv2.imwrite(comp_img_dir, comp_img)
-    #cv2.imwrite(comp_mask_dir, comp_mask)
-
     return comp_img, comp_mask
-
-
-def worker_process(worker_id, gpu_id, combinations_json, area_coverage, queue):
-    try:
-        #os.environ['CUDA_VISIBLE_DEVICES'] = str(gpu_id)
-        # Map gpu_id to physical GPU via CUDA_VISIBLE_DEVICES filtering
-        visible_devices = os.environ.get("CUDA_VISIBLE_DEVICES", "0").split(",")
-
-        if gpu_id < len(visible_devices):
-            os.environ["CUDA_VISIBLE_DEVICES"] = visible_devices[gpu_id]
-        else:
-            raise ValueError(f"gpu_id {gpu_id} is out of bounds for available CUDA devices: {visible_devices}")
-
-        # Now 'device=0' refers to the specific GPU set above
-        net = FOPAHeatMapModel(device=0)
-
-        pair = None
-        while pair is None:
-            pair = get_custom_bbox(net, combinations_json, area_coverage)
-        comp_img, comp_mask = naive_composition(pair)
-        queue.put({
-            "comp_img": comp_img,
-            "Foreground": os.path.basename(pair["foreground"]),
-            "Foreground Mask": os.path.basename(pair["foreground_mask"]),
-            "Background": os.path.basename(pair["background"]),
-            "Bbox": pair["bbox"]
-        })
-    except Exception as e:
-        print(f"[Worker {worker_id}] Failed: {e}")
-        queue.put(None)
 
 
 def worker_task(args):
@@ -434,7 +467,7 @@ if __name__ == '__main__':
 
     # Configuration
     total_images = 10
-    workers_per_gpu = 3
+    workers_per_gpu = 2
 
     # Parse logical GPU IDs from CUDA_VISIBLE_DEVICES (e.g., "2,3")
     cuda_visible = os.environ.get("CUDA_VISIBLE_DEVICES", "0")
@@ -500,145 +533,4 @@ if __name__ == '__main__':
         training_csv=csv_file,
         foreground_labels_list=foreground_labels,
         training_labels_path=training_labels_json
-    )
-    
-
-
-    #multiprocessing.set_start_method('spawn')
-
-    #result_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'dataset/results', 'training_set')
-    #os.makedirs(result_dir, exist_ok=True)
-
-    #combinations_json = 'dataset/used_combinations.json'
-    #foreground_labels = helper_functions.load_json(json_file='dataset/foreground/foreground_labels.json')
-    #training_labels_json = os.path.join(result_dir, 'training_labels.json')
-
-    ## Clear old data
-    #if os.path.exists(combinations_json):
-    #    os.remove(combinations_json)
-    #if os.path.exists(training_labels_json):
-    #    os.remove(training_labels_json)
-
-    #csv_file = os.path.join(result_dir, "training.csv")
-    #columns = ["Composite", "Foreground", "Foreground Mask", "Background", "Bbox"]
-    #if os.path.exists(csv_file):
-    #    os.remove(csv_file)
-
-    ## Configuration
-    #total_images = 10
-    #workers_per_gpu = 3
-    #max_concurrent = workers_per_gpu  # using only one GPU
-
-    #from multiprocessing import Pool
-
-    #image_index = 1
-    #successful_count = 0
-
-    #with Pool(processes=max_concurrent, initializer=init_worker) as pool:
-    #    while successful_count < total_images:
-    #        remaining = total_images - successful_count
-    #        batch_size = min(max_concurrent, remaining)
-    #        batch_args = [(i, combinations_json, 0.10) for i in range(batch_size)]
-
-    #        for result in pool.map(worker_task, batch_args):
-    #            if result:
-    #                img_name = f"img{image_index}.png"
-    #                img_path = os.path.join(result_dir, img_name)
-    #                cv2.imwrite(img_path, result["comp_img"])
-
-    #                row = {
-    #                    "Composite": img_name,
-    #                    "Foreground": result["Foreground"],
-    #                    "Foreground Mask": result["Foreground Mask"],
-    #                    "Background": result["Background"],
-    #                    "Bbox": result["Bbox"]
-    #                }
-    #                helper_functions.write_to_csv(filename=csv_file, data=row, column_titles=columns)
-
-    #                image_index += 1
-    #                successful_count += 1
-
-    ## Generate labels after all images are saved
-    #labeler.generate_training_labels(
-    #    training_csv=csv_file,
-    #    foreground_labels_list=foreground_labels,
-    #    training_labels_path=training_labels_json
-    #)
-
-    '''multiprocessing.set_start_method('spawn')
-
-    result_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'dataset/results', 'training_set')
-    #comp_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'dataset/results', 'naive_composition')
-    #if os.path.exists(result_dir):
-    #    shutil.rmtree(result_dir)
-    os.makedirs(result_dir, exist_ok=True)
-    #os.makedirs(comp_dir, exist_ok=True)
-    
-    combinations_json='dataset/used_combinations.json'
-    foreground_labels = helper_functions.load_json(json_file='dataset/foreground/foreground_labels.json')
-    training_labels_json = os.path.join(result_dir, 'training_labels.json')
-    
-    if os.path.exists(combinations_json):
-        os.remove(combinations_json)
-    
-    if os.path.exists(training_labels_json):
-        os.remove(training_labels_json)
-
-
-    csv_file = os.path.join(result_dir, "training.csv")
-    columns = ["Composite", "Foreground", "Foreground Mask", "Background", "Bbox"]
-
-    if os.path.exists(csv_file):
-        os.remove(csv_file)
-
-    total_images = 10
-    workers_per_gpu = 3
-
-    #visible_gpus = list(range(len(os.environ.get("CUDA_VISIBLE_DEVICES", "0").split(","))))
-    #gpu_ids = [gpu for gpu in visible_gpus for _ in range(workers_per_gpu)]
-    #max_concurrent = len(gpu_ids)
-
-    cuda_visible = os.environ.get("CUDA_VISIBLE_DEVICES", "0").split(",")
-    num_visible = len(cuda_visible)
-    gpu_ids = list(range(workers_per_gpu * num_visible))
-    max_concurrent = len(gpu_ids)
-
-    queue = Queue()
-    successful_count = 0
-    image_index = 1
-
-    while successful_count < total_images:
-        processes = []
-        batch_size = min(max_concurrent, total_images - successful_count)
-
-        for i in range(batch_size):
-            #gpu_id = gpu_ids[i % len(gpu_ids)]
-            #p = Process(target=worker_process, args=(i, gpu_id, combinations_json, 0.10, queue))
-            gpu_id = i % num_visible  # ensures device=0,1,... remapped
-            p = Process(target=worker_process, args=(i, gpu_id, combinations_json, 0.10, queue))
-            p.start()
-            processes.append(p)
-            time.sleep(0.5)
-
-        for _ in range(batch_size):
-            result = queue.get()
-            if result:
-                img_name = f"img{image_index}.png"
-                img_path = os.path.join(result_dir, img_name)
-                cv2.imwrite(img_path, result["comp_img"])
-                row = {
-                    "Composite": img_name,
-                    "Foreground": result["Foreground"],
-                    "Foreground Mask": result["Foreground Mask"],
-                    "Background": result["Background"],
-                    "Bbox": result["Bbox"]
-                }
-                helper_functions.write_to_csv(filename=csv_file, data=row, column_titles=columns)
-                image_index += 1
-                successful_count += 1
-
-        for p in processes:
-            p.join()
-
-    labeler.generate_training_labels(training_csv=csv_file, foreground_labels_list=foreground_labels, training_labels_path=training_labels_json)'''
-        
+    )     
