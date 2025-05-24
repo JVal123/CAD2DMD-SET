@@ -11,7 +11,7 @@ import sys
 import labeler
 from PIL import Image
 import multiprocessing
-from multiprocessing import Process, Queue
+from multiprocessing import Process, Queue, Pool
 #import concurrent.futures
 import uuid
 from filelock import FileLock
@@ -31,6 +31,15 @@ sys.path.append(color_transfer_folder)
 from fopa_heat_map import FOPAHeatMapModel
 from generate_composite_image import get_composite_image
 from reinhard import color_transfer
+
+# Global model variable
+net = None
+
+def init_worker():
+    """Initialize the FOPA model once per worker process."""
+    global net
+    os.environ['CUDA_VISIBLE_DEVICES'] = '0'  # Or leave it unset if you're only using one GPU
+    net = FOPAHeatMapModel(device=0)
 
 
 def get_next_unique_number(counter_file='dataset/unique_id.txt'):
@@ -363,8 +372,92 @@ def worker_process(worker_id, gpu_id, combinations_json, area_coverage, queue):
         queue.put(None)
 
 
+def worker_task(args):
+    """Worker function using globally initialized model."""
+    worker_id, combinations_json, area_coverage = args
+    global net
+    try:
+        pair = None
+        while pair is None:
+            pair = get_custom_bbox(net, combinations_json, area_coverage)
+        comp_img, comp_mask = naive_composition(pair)
+        return {
+            "comp_img": comp_img,
+            "Foreground": os.path.basename(pair["foreground"]),
+            "Foreground Mask": os.path.basename(pair["foreground_mask"]),
+            "Background": os.path.basename(pair["background"]),
+            "Bbox": pair["bbox"]
+        }
+    except Exception as e:
+        print(f"[Worker {worker_id}] Failed: {e}")
+        return None
+    
+
+
 if __name__ == '__main__':
+
     multiprocessing.set_start_method('spawn')
+
+    result_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'dataset/results', 'training_set')
+    os.makedirs(result_dir, exist_ok=True)
+
+    combinations_json = 'dataset/used_combinations.json'
+    foreground_labels = helper_functions.load_json(json_file='dataset/foreground/foreground_labels.json')
+    training_labels_json = os.path.join(result_dir, 'training_labels.json')
+
+    # Clear old data
+    if os.path.exists(combinations_json):
+        os.remove(combinations_json)
+    if os.path.exists(training_labels_json):
+        os.remove(training_labels_json)
+
+    csv_file = os.path.join(result_dir, "training.csv")
+    columns = ["Composite", "Foreground", "Foreground Mask", "Background", "Bbox"]
+    if os.path.exists(csv_file):
+        os.remove(csv_file)
+
+    # Configuration
+    total_images = 10
+    workers_per_gpu = 3
+    max_concurrent = workers_per_gpu  # using only one GPU
+
+    from multiprocessing import Pool
+
+    image_index = 1
+    successful_count = 0
+
+    with Pool(processes=max_concurrent, initializer=init_worker) as pool:
+        while successful_count < total_images:
+            remaining = total_images - successful_count
+            batch_size = min(max_concurrent, remaining)
+            batch_args = [(i, combinations_json, 0.10) for i in range(batch_size)]
+
+            for result in pool.map(worker_task, batch_args):
+                if result:
+                    img_name = f"img{image_index}.png"
+                    img_path = os.path.join(result_dir, img_name)
+                    cv2.imwrite(img_path, result["comp_img"])
+
+                    row = {
+                        "Composite": img_name,
+                        "Foreground": result["Foreground"],
+                        "Foreground Mask": result["Foreground Mask"],
+                        "Background": result["Background"],
+                        "Bbox": result["Bbox"]
+                    }
+                    helper_functions.write_to_csv(filename=csv_file, data=row, column_titles=columns)
+
+                    image_index += 1
+                    successful_count += 1
+
+    # Generate labels after all images are saved
+    labeler.generate_training_labels(
+        training_csv=csv_file,
+        foreground_labels_list=foreground_labels,
+        training_labels_path=training_labels_json
+    )
+
+    '''multiprocessing.set_start_method('spawn')
 
     result_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'dataset/results', 'training_set')
     #comp_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'dataset/results', 'naive_composition')
@@ -439,5 +532,5 @@ if __name__ == '__main__':
         for p in processes:
             p.join()
 
-    labeler.generate_training_labels(training_csv=csv_file, foreground_labels_list=foreground_labels, training_labels_path=training_labels_json)
+    labeler.generate_training_labels(training_csv=csv_file, foreground_labels_list=foreground_labels, training_labels_path=training_labels_json)'''
         
