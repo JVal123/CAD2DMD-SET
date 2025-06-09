@@ -6,19 +6,8 @@ import helper_functions
 import csv
 import ast
 import json
-import pandas as pd
 import os
-import sys
-import numpy as np
 import re
-
-# Add the parent directory to the path
-vlmevalkit_folder = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'VLMEvalKit/vlmeval/smp/'))
-
-sys.path.append(vlmevalkit_folder)
-
-from vlm import encode_image_file_to_base64
-
 
 
 def get_qa_pair(device_type, mode, value, json_dict, random_generator):
@@ -395,66 +384,32 @@ def generate_training_labels(training_csv, foreground_labels_list, training_labe
         json.dump(training_labels_list, f, indent=4)
 
 
-def labels_in_tsv(json_path, image_dir, tsv_path):    
+def remove_underscores_from_device_names_in_file(input_file, output_file=None):
     """
-    Converts a JSON label file to a TSV format with base64-encoded images.
-    
-    Args:
-        json_path (str): Path to the input labels.json
-        image_dir (str): Path to the directory containing image files
-        tsv_path (str): Path where the output TSV will be saved
+    Reads a JSON file, removes underscores from device names in the 'answer' field,
+    and writes the cleaned data to the output file (or overwrites the input file if none specified).
     """
-   
-   # Load the JSON data
-    data = helper_functions.load_json(json_path)
+    # Load JSON data from file
+    with open(input_file, 'r', encoding='utf-8') as f:
+        data = json.load(f)
+
+    # Regex to identify likely device names (e.g., blood_pressure_device)
+    device_name_pattern = re.compile(r'\b([a-zA-Z]+(?:_[a-zA-Z]+)+)\b')
+
+    for entry in data:
+        if 'answer' in entry:
+            original_answer = entry['answer']
+
+            # Replace underscores in matched device names
+            def replace_device_name(match):
+                return match.group(1).replace('_', ' ')
+            
+            entry['answer'] = device_name_pattern.sub(replace_device_name, original_answer)
+
+    # Determine where to write
+    target_file = output_file if output_file else input_file
+    with open(target_file, 'w', encoding='utf-8') as f:
+        json.dump(data, f, indent=4, ensure_ascii=False)
+
+    print(f"✅ Processed file saved to: {target_file}")
     
-    rows = []
-    for idx, item in enumerate(data, start=1):
-        image_filename = os.path.join(image_dir, item["image"] + ".png")  # Modify extension if needed
-        try:
-            image_base64 = encode_image_file_to_base64(image_filename)
-        except Exception as e:
-            print(f"Error encoding image {image_filename}: {e}")
-            image_base64 = ""
-
-        rows.append({
-            "index": idx,
-            "image": image_base64,
-            "question": item["question"],
-            "answer": item["answer"]
-        })
-
-    df = pd.DataFrame(rows)
-    df.to_csv(tsv_path, sep='\t', index=False)
-    
-
-if __name__=="__main__":
-
-    # --------- Creating TSV file for VLMEvalKit -----------------------------
-
-    '''labels_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'dataset')
-    json_path = os.path.join(labels_path, 'labels.json')
-    tsv_path = os.path.join(labels_path, 'test_labels.tsv')
-    image_dir = os.path.join(labels_path, 'foreground')
-
-    print('Creating tsv labels version...')
- 
-    labels_in_tsv(json_path, image_dir, tsv_path, is_test_split=True)
-
-    print('Stage Complete!')'''
-
-    # --------- Creating test set labels -----------------------------
-
-    csv_file = "test.csv" 
-    roi_filepath = os.path.abspath("displays/roi_mappings.json")
-
-    rng = np.random.default_rng(seed=42)
-
-    print("Creating test set labels json file... ")
-    generate_labels(csv_file, mappings_json=roi_filepath, labels_json='test.json', random_generator=rng)
-    print("Test json file created! ")
-
-    print("Creating test set labels tsv file... ")
-    labels_in_tsv(json_path='test.json', image_dir='test_set', tsv_path='test.tsv')
-
-    print("Label Generation Stage Complete! ✅")
