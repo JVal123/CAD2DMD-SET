@@ -15,6 +15,7 @@ from multiprocessing import Process, Queue, Pool
 #import concurrent.futures
 import uuid
 from filelock import FileLock
+import argparse
 
 
 # Add the parent directory to the path
@@ -402,6 +403,47 @@ def get_custom_bbox(net, combinations_path, area_coverage):
         return pair
 
 
+def get_random_bbox(combinations_path, area_coverage):
+    '''
+    Randomly generates a valid bounding box based on area coverage. The aspect ratio of the bounding box 
+    corresponds to the one of the foreground object. 
+    Returns the custom bbox in (x1, y1, x2, y2) format, ready to be used in the naive composition function.
+    '''
+    pair = get_pair_fopa(used_combinations_path=combinations_path)
+
+    # Load images
+    bg_image = Image.open(pair['background'])
+    bg_width, bg_height = bg_image.size
+    bg_area = bg_width * bg_height
+
+    _, _, obj_w, obj_h = helper_functions.get_bounding_box_xywh(pair['foreground_mask'])
+    aspect_ratio = obj_w / obj_h
+
+    min_area = area_coverage * bg_area
+
+    while True:
+        height = random.randint(1, int(bg_height * 0.5)) # We limit the height to half the background's image height to avoid large, unrealistic foregroound objects
+        width = int(height * aspect_ratio)
+
+        # Ensure minimum area
+        if width * height < min_area:
+            scale = (min_area / (width * height)) ** 0.5
+            width = int(width * scale)
+            height = int(height * scale)
+
+        x1 = random.randint(0, max(0, bg_width - width))
+        y1 = random.randint(0, max(0, bg_height - height))
+        x2 = x1 + width
+        y2 = y1 + height
+
+        if x2 <= bg_width and y2 <= bg_height:
+            print("✅ Random bbox fits in background.")
+            pair['bbox'] = [x1, y1, x2, y2]
+            return pair
+
+
+
+
 def naive_composition(pair):
 
     bg_img = pair['background']
@@ -424,12 +466,18 @@ def naive_composition(pair):
 
 def worker_task(args):
     """Worker function using globally initialized model."""
-    worker_id, combinations_json, area_coverage = args
+    worker_id, combinations_json, area_coverage, method = args
     global net
     try:
         pair = None
         while pair is None:
-            pair = get_custom_bbox(net, combinations_json, area_coverage)
+            if method == 'fopa':
+                pair = get_custom_bbox(net, combinations_json, area_coverage)
+            elif method == 'random':
+                pair = get_random_bbox(combinations_json, area_coverage)
+            else:
+                raise ValueError(f"Unknown composition method: {method}")
+            
         comp_img, comp_mask = naive_composition(pair)
         return {
             "comp_img": comp_img,
@@ -446,10 +494,25 @@ def worker_task(args):
 
 if __name__ == '__main__':
 
+    parser = argparse.ArgumentParser(description="Image composition pipeline")
+    parser.add_argument('--method', type=str, default='fopa', choices=['fopa', 'random'],
+                        help='Method to use for object placement: "fopa" or "random"')
+    parser.add_argument('--result_dir', type=str, default='dataset/results/training_set',
+                        help='Directory to save composite images and labels')
+    parser.add_argument('--total_images', type=int, default=10,
+                        help='Total number of images to generate')
+
+    args = parser.parse_args()
+
+    method = args.method
+    result_dir = os.path.abspath(args.result_dir)
+    os.makedirs(result_dir, exist_ok=True)
+    total_images = args.total_images
+
     multiprocessing.set_start_method('spawn')
 
-    result_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'dataset/results', 'training_set')
-    os.makedirs(result_dir, exist_ok=True)
+    #result_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'dataset/results', 'training_set')
+    #os.makedirs(result_dir, exist_ok=True)
 
     combinations_json = 'dataset/used_combinations.json'
     foreground_labels = helper_functions.load_json(json_file='dataset/foreground/foreground_labels.json')
@@ -466,7 +529,7 @@ if __name__ == '__main__':
         os.remove(csv_file)
 
     # Configuration
-    total_images = 10
+    #total_images = 10
     workers_per_gpu = 2
 
     # Parse logical GPU IDs from CUDA_VISIBLE_DEVICES (e.g., "2,3")
@@ -494,7 +557,7 @@ if __name__ == '__main__':
         while successful_count < total_images:
             remaining = total_images - successful_count
             batch_size = min(max_concurrent, remaining)
-            batch_args = [(i, combinations_json, 0.10) for i in range(batch_size)]
+            batch_args = [(i, combinations_json, 0.10, method) for i in range(batch_size)]
 
             task_queue = []
             for i, args in enumerate(batch_args):
