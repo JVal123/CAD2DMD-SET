@@ -8,6 +8,8 @@ import ast
 import json
 import os
 import re
+import argparse
+import numpy as np
 
 
 def get_qa_pair(device_type, mode, value, json_dict, random_generator):
@@ -289,7 +291,121 @@ def get_qa_pair(device_type, mode, value, json_dict, random_generator):
     return chosen_qa_pair
 
 
-def generate_labels(csv_filepath, mappings_json, labels_json, random_generator):
+def get_short_qa_pair(device_type, mode, value, json_dict, random_generator):
+    """
+    Generate QA pairs that lead to short answers, like just the value or device type.
+    """
+    device_dicts = json_dict[device_type]
+    for index in range(len(device_dicts)):
+        if device_dicts[index]["mode"] == mode:
+            break
+
+    labels = device_dicts[index]["labels"]
+    measurement_type = labels["measurement_type"]
+    unit = labels["unit"]
+
+    qa_pairs = []
+
+    # Type-specific QA (always short)
+    qa_pairs.extend([
+        {
+            "question": "What type of measurement device is shown?",
+            "answer": f"{device_type}"
+        },
+        {
+            "question": "Identify the device.",
+            "answer": f"{device_type}"
+        },
+        {
+            "question": "What is the device?",
+            "answer": f"{device_type}"
+        }
+    ])
+
+    # Measurement value-based QA
+    if len(measurement_type) == 1 and len(unit) == 1 and len(value) == 1:
+        value_str = f"{value[0]} {unit[0]}"
+        qa_pairs.extend([
+            {
+                "question": "What is the displayed value?",
+                "answer": value_str
+            },
+            {
+                "question": f"What {measurement_type[0]} does the device show?",
+                "answer": value_str
+            },
+            {
+                "question": f"What is the {measurement_type[0]} reading?",
+                "answer": value_str
+            },
+            {
+                "question": "Give the value shown on the display.",
+                "answer": value_str
+            },
+            {
+                "question": "What is the output value?",
+                "answer": value_str
+            }
+        ])
+
+    elif len(measurement_type) == 2 and len(unit) == 2 and len(value) == 2:
+        val1 = f"{value[0]} {unit[0]}"
+        val2 = f"{value[1]} {unit[1]}"
+        qa_pairs.extend([
+            {
+                "question": f"What are the two readings shown?",
+                "answer": f"{val1}, {val2}"
+            },
+            {
+                "question": f"List both measurements on the device.",
+                "answer": f"{val1}, {val2}"
+            },
+            {
+                "question": f"What values are shown?",
+                "answer": f"{val1} and {val2}"
+            }
+        ])
+
+    elif len(measurement_type) == 3 and len(unit) == 2 and len(value) == 3:
+        v1 = f"{value[0]} {unit[0]}"
+        v2 = f"{value[1]} {unit[1]}"
+        v3 = f"{value[2]} {unit[1]}"
+        qa_pairs.extend([
+            {
+                "question": "Provide all values displayed.",
+                "answer": f"{v1}, {v2}, {v3}"
+            },
+            {
+                "question": f"What are the three measurements?",
+                "answer": f"{v1}, {v2}, {v3}"
+            }
+        ])
+
+    elif len(measurement_type) == 1 and len(unit) == 2 and len(value) == 2:
+        val1 = f"{value[0]} {unit[0]}"
+        val2 = f"{value[1]} {unit[1]}"
+        qa_pairs.extend([
+            {
+                "question": f"What is the {measurement_type[0]} in both units?",
+                "answer": f"{val1}, {val2}"
+            },
+            {
+                "question": "Give the two values shown.",
+                "answer": f"{val1} and {val2}"
+            }
+        ])
+
+    else:
+        qa_pairs.append({
+            "question": "What value is displayed?",
+            "answer": ", ".join([f"{v} {u}" for v, u in zip(value, unit)])
+        })
+
+    idx = random_generator.integers(low=0, high=len(qa_pairs))
+    return qa_pairs[idx]
+
+
+def generate_labels(csv_filepath, mappings_json, labels_json, random_generator, short_answers=False):
 
     # Load json files
     mappings_dict = helper_functions.load_json(mappings_json)
@@ -317,7 +433,10 @@ def generate_labels(csv_filepath, mappings_json, labels_json, random_generator):
                 cleaned_value = value.replace("‘", "'").replace("’", "'").replace("“", '"').replace("”", '"') # Replace curly quotes with straight ones
                 value = ast.literal_eval(cleaned_value)
 
-            qa_pair = get_qa_pair(device_type, mode, value, mappings_dict, random_generator)
+            if short_answers:
+                qa_pair = get_short_qa_pair(device_type, mode, value, mappings_dict, random_generator)
+            else:
+                qa_pair = get_qa_pair(device_type, mode, value, mappings_dict, random_generator)
 
             label_entry = {
                 "image": image,
@@ -412,4 +531,44 @@ def remove_underscores_from_device_names_in_file(input_file, output_file=None):
         json.dump(data, f, indent=4, ensure_ascii=False)
 
     print(f"✅ Processed file saved to: {target_file}")
-    
+
+
+
+if __name__=="__main__":
+    parser = argparse.ArgumentParser(description="Generate labels from pre-generated dataset.")
+    parser.add_argument('--stage', choices=['foreground', 'training'], required=True)
+    parser.add_argument('--mode', choices=['full_answers', 'short_answers'], required=False)
+
+    # Parse known args to decide what to do next
+    args, remaining_args = parser.parse_known_args()
+
+    if args.stage == "foreground":
+        parser.add_argument("--csv_file", help="Path to foreground images csv file")
+        parser.add_argument("--foreground_labels_json", help="Path to foreground labels json file")
+    else:
+        parser.add_argument("--csv_file", help="Path to training images csv file")
+        parser.add_argument("--foreground_labels_json", help="Path to foreground labels json file")
+        parser.add_argument("--training_labels_json", help="Path to training labels json file")
+        
+    args = parser.parse_args()
+
+    roi_filepath = os.path.abspath("displays/roi_mappings.json")
+    rng = np.random.default_rng(seed=42)
+
+    if args.stage == "foreground":
+        print("Creating new foreground set labels json file... ")
+
+        if args.mode == "full_answers":
+            generate_labels(args.csv_file, mappings_json=roi_filepath, labels_json=args.foreground_labels_json, random_generator=rng)
+        else:
+            generate_labels(args.csv_file, mappings_json=roi_filepath, labels_json=args.foreground_labels_json, random_generator=rng, short_answers=True)
+
+        remove_underscores_from_device_names_in_file(input_file=args.foreground_labels_json)
+
+    else:
+        print("Creating new training set labels json file... ")
+        foreground_labels = helper_functions.load_json(json_file=args.foreground_labels_json)
+        generate_training_labels(training_csv=args.csv_file, foreground_labels_list=foreground_labels, training_labels_path=args.training_labels_json)  
+   
+
+    print("Label Generation Stage Complete! ✅")
