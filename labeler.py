@@ -405,7 +405,72 @@ def get_short_qa_pair(device_type, mode, value, json_dict, random_generator):
     return qa_pairs[idx]
 
 
-def generate_labels(csv_filepath, mappings_json, labels_json, random_generator, short_answers=False):
+def get_one_word_qa_pair(device_type, mode, value, json_dict, random_generator):
+    """
+    Generate QA pairs where the answer is a single word. Handles multiple measurements explicitly.
+    """
+    device_dicts = json_dict[device_type]
+    for index in range(len(device_dicts)):
+        if device_dicts[index]["mode"] == mode:
+            break
+
+    labels = device_dicts[index]["labels"]
+    measurement_type = labels["measurement_type"]
+    unit = labels["unit"]
+
+    qa_pairs = []
+
+    # Commented out due to possibility of multiple word answers
+    '''qa_pairs.extend([
+        {
+            "question": "What device is this?",
+            "answer": device_type
+        },
+        {
+            "question": "Identify the device type.",
+            "answer": device_type
+        }
+    ])
+
+    for mt in measurement_type:
+        qa_pairs.append({
+            "question": "What is being measured?",
+            "answer": mt
+        })'''
+
+    # Disambiguated values and units
+    for i in range(len(value)):
+        if i < len(measurement_type) and i < len(unit):
+            v = str(value[i])
+            u = unit[i]
+            mt = measurement_type[i]
+
+            qa_pairs.extend([
+                {
+                    "question": f"What is the value for {mt}?",
+                    "answer": v
+                },
+                {
+                    "question": f"What unit is used for {mt}?",
+                    "answer": u
+                }
+            ])
+        elif i < len(unit):
+            qa_pairs.append({
+                "question": f"What unit is displayed?",
+                "answer": unit[i]
+            })
+        elif i < len(value):
+            qa_pairs.append({
+                "question": f"What is one value shown?",
+                "answer": str(value[i])
+            })
+
+    idx = random_generator.integers(low=0, high=len(qa_pairs))
+    return qa_pairs[idx]
+
+
+def generate_labels(csv_filepath, mappings_json, labels_json, random_generator, short_answers=False, one_word_answers=False):
 
     # Load json files
     mappings_dict = helper_functions.load_json(mappings_json)
@@ -435,6 +500,8 @@ def generate_labels(csv_filepath, mappings_json, labels_json, random_generator, 
 
             if short_answers:
                 qa_pair = get_short_qa_pair(device_type, mode, value, mappings_dict, random_generator)
+            elif one_word_answers:
+                qa_pair = get_one_word_qa_pair(device_type, mode, value, mappings_dict, random_generator)
             else:
                 qa_pair = get_qa_pair(device_type, mode, value, mappings_dict, random_generator)
 
@@ -537,7 +604,7 @@ def remove_underscores_from_device_names_in_file(input_file, output_file=None):
 if __name__=="__main__":
     parser = argparse.ArgumentParser(description="Generate labels from pre-generated dataset.")
     parser.add_argument('--stage', choices=['foreground', 'training'], required=True)
-    parser.add_argument('--mode', choices=['full_answers', 'short_answers'], required=False)
+    parser.add_argument('--mode', choices=['full_answers', 'short_answers', 'one_word'], required=False)
 
     # Parse known args to decide what to do next
     args, remaining_args = parser.parse_known_args()
@@ -558,11 +625,13 @@ if __name__=="__main__":
     if args.stage == "foreground":
         print("Creating new foreground set labels json file... ")
 
-        if args.mode == "full_answers":
-            generate_labels(args.csv_file, mappings_json=roi_filepath, labels_json=args.foreground_labels_json, random_generator=rng)
-        else:
+        if args.mode == "one_word":
+            generate_labels(args.csv_file, mappings_json=roi_filepath, labels_json=args.foreground_labels_json, random_generator=rng, one_word_answers=True)
+        elif args.mode == "short_answers":
             generate_labels(args.csv_file, mappings_json=roi_filepath, labels_json=args.foreground_labels_json, random_generator=rng, short_answers=True)
-
+        else:
+            generate_labels(args.csv_file, mappings_json=roi_filepath, labels_json=args.foreground_labels_json, random_generator=rng)
+        
         remove_underscores_from_device_names_in_file(input_file=args.foreground_labels_json)
 
     else:
