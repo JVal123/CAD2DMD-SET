@@ -56,7 +56,7 @@ def labels_in_tsv(json_path, image_dir, tsv_path):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Generate test set labels in tsv format, ready for VLMEvalKit.")
-    parser.add_argument('--mode', choices=['full_answers', 'short_answers'], required=True)
+    parser.add_argument('--mode', choices=['full_answers', 'short_answers', 'one_word'], required=True)
     parser.add_argument("--input_csv", help="Path to test set csv file")
     parser.add_argument("--image_dir", help="Path to test set image directory")
     parser.add_argument("--test_labels_json", help="Path to output test labels json file")
@@ -70,10 +70,12 @@ if __name__ == "__main__":
     rng = np.random.default_rng(seed=42)
 
     print("Creating test set labels json file... ")
-    if args.mode == "full_answers":
-        labeler.generate_labels(args.input_csv, mappings_json=roi_filepath, labels_json=args.test_labels_json, random_generator=rng)
-    else:
+    if args.mode == "one_word":
+        labeler.generate_labels(args.input_csv, mappings_json=roi_filepath, labels_json=args.test_labels_json, random_generator=rng, one_word_answers=True)
+    elif args.mode == "short_answers":
         labeler.generate_labels(args.input_csv, mappings_json=roi_filepath, labels_json=args.test_labels_json, random_generator=rng, short_answers=True)
+    else:
+        labeler.generate_labels(args.input_csv, mappings_json=roi_filepath, labels_json=args.test_labels_json, random_generator=rng)
 
     labeler.remove_underscores_from_device_names_in_file(input_file=args.test_labels_json)
     print("Test json file created! ")
