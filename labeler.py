@@ -308,10 +308,16 @@ def get_one_word_qa_pair(device_type, mode, value, json_dict, random_generator):
 
     # Disambiguated values and units
     for i in range(len(value)):
-        if i < len(measurement_type) and i < len(unit):
+        if i < len(measurement_type) and i <= len(unit):
             v = str(value[i])
-            u = unit[i]
+            if i == len(unit): #blood pressure device case where the second unit is  
+                u = unit[i-1]
+            else:
+                u = unit[i]
             mt = measurement_type[i]
+
+            if u == "": #thermometer time unit case
+                u = "None"
 
             qa_pairs.extend([
                 {
@@ -323,7 +329,7 @@ def get_one_word_qa_pair(device_type, mode, value, json_dict, random_generator):
                     "answer": u
                 }
             ])
-        elif i < len(unit):
+        '''elif i < len(unit):
             qa_pairs.append({
                 "question": f"What unit is displayed?",
                 "answer": unit[i]
@@ -332,7 +338,7 @@ def get_one_word_qa_pair(device_type, mode, value, json_dict, random_generator):
             qa_pairs.append({
                 "question": f"What is one value shown?",
                 "answer": str(value[i])
-            })
+            })'''
 
     idx = random_generator.integers(low=0, high=len(qa_pairs))
     return qa_pairs[idx]
