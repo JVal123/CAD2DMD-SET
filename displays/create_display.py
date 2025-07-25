@@ -347,9 +347,9 @@ if __name__ == "__main__":
     display_generator = DisplayGenerator(input_folder='images/real', dict_folder='dicts', font_folder='fonts', output_folder='images/generated')
     device_list = display_generator.get_child_folders()
 
-    roi_filepath = os.path.abspath("roi_mappings.json")
+    roi_filepath = os.path.abspath("displays/roi_mappings.json")
     roi_dictionary = helper_functions.load_json(roi_filepath)
-    used_combinations_path = "images/generated/used_combinations.json"
+    used_combinations_path = 'displays/images/generated/used_combinations.json'
 
     if os.path.exists(used_combinations_path):
         os.remove(used_combinations_path)
@@ -371,5 +371,3 @@ if __name__ == "__main__":
                     generated += 1
                 else:
                     break
-
-    print('Display Generation Stage Complete! ✅')

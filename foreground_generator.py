@@ -51,6 +51,8 @@ if __name__ == "__main__":
     if os.path.exists(used_combinations_path):
         os.remove(used_combinations_path)
 
+    print("Checking display image number...")
+
     for device_name in device_list:
         image_number = helper_functions.count_folder_images(f'displays/images/generated/{device_name}')
         max_image_number, is_actual_max = display_generator.maximum_display_images(device=device_name, roi_data=roi_dictionary, display_number=display_number)
@@ -68,8 +70,6 @@ if __name__ == "__main__":
                     generated += 1
                 else:
                     break
-
-    print('Display Generation Stage Complete! ✅')
     
     # ---------------- Renders -------------------------------------------
 
@@ -156,8 +156,6 @@ if __name__ == "__main__":
     
     helper_functions.rename_images_in_folder(foreground_path)
     helper_functions.rename_images_in_folder(output_passes_path)
-
-    print("Dataset Generation Stage Complete! ✅")
 
     # ------------------ Label Generation -----------------------
                 
