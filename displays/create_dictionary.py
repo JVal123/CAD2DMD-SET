@@ -137,15 +137,16 @@ class DictionaryCreator:
             for model in os.listdir(models_folder):
                 if model.endswith(".blend"):
                     device_name = os.path.splitext(model)[0]
-                    if len(dict_list[device_name]) <= 1:
-                        dict = open(f"{self.output_path}/{device_name}.txt", "w")
-                        self.select_dict(dict, dict_name=f"{device_name}")
-                        print(f'The {device_name} dictionary was created!')
-                    else:
-                        for subname in dict_list[device_name]:
+                    for subname in dict_list[device_name]:
+                        if subname == device_name:
+                            dict = open(f"{self.output_path}/{device_name}.txt", "w")
+                            self.select_dict(dict, dict_name=f"{device_name}")
+                            print(f'The {device_name} dictionary was created!')
+                        else:
                             dict = open(f"{self.output_path}/{device_name}_{subname}.txt", "w")
                             self.select_dict(dict, dict_name=f"{device_name}_{subname}")
                             print(f'The {device_name}_{subname} dictionary was created!')
+
         else:
             dict = open(f"{self.output_path}/{device_name}.txt", "w")
             self.select_dict(dict, dict_name=f"{device_name}")
