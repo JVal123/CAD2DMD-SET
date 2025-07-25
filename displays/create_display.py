@@ -5,10 +5,17 @@ import numpy as np
 import random
 import json
 import ast
-import helper_functions
 from itertools import product
 from math import prod
 import argparse
+import sys
+
+# Add the parent directory to the path
+current_file = os.path.abspath(__file__)
+parent_folder = os.path.dirname(os.path.dirname(current_file))
+sys.path.append(parent_folder)
+
+import helper_functions
 
 
 class DisplayGenerator:
@@ -334,16 +341,15 @@ class DisplayGenerator:
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description='Generates OCR Ready Dataset')
-    parser.add_argument('-displays_path', type=str, help='Add the path to the displays folder.', dest="displays_path", default='displays')
     parser.add_argument('-display_number', type=int, help='Define number of display images per device.', dest='display_number', default=10)
     args = parser.parse_args()
         
     display_generator = DisplayGenerator(input_folder='images/real', dict_folder='dicts', font_folder='fonts', output_folder='images/generated')
     device_list = display_generator.get_child_folders()
 
-    roi_filepath = os.path.abspath("displays/roi_mappings.json")
+    roi_filepath = os.path.abspath("roi_mappings.json")
     roi_dictionary = helper_functions.load_json(roi_filepath)
-    used_combinations_path = os.path.join(args.displays_path, 'images/generated/used_combinations.json')
+    used_combinations_path = "images/generated/used_combinations.json"
 
     if os.path.exists(used_combinations_path):
         os.remove(used_combinations_path)
