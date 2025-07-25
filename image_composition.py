@@ -1,5 +1,3 @@
-#from common import *
-#from libcom import FOPAHeatMapModel, get_composite_image, color_transfer
 import os
 import time
 import cv2
@@ -12,7 +10,6 @@ import labeler
 from PIL import Image
 import multiprocessing
 from multiprocessing import Process, Queue, Pool
-#import concurrent.futures
 import uuid
 from filelock import FileLock
 import argparse
@@ -36,11 +33,6 @@ from reinhard import color_transfer
 # Global model variable
 net = None
 
-#def init_worker(gpu_id):
-#    """Initialize the FOPA model once per worker process."""
-#    global net
-#    os.environ['CUDA_VISIBLE_DEVICES'] = str(gpu_id)
-#    net = FOPAHeatMapModel(device=0)
 
 def init_worker(logical_gpu_id):
     """
@@ -232,9 +224,7 @@ def restore_pair_images_name(originals, renamed):
 
 
 def get_unique_image_triplet(background_folder, foreground_folder, mask_folder, used_combinations_path):
-    
-    #lock_path = used_combinations_path + ".lock"
-    #with FileLock(lock_path):  # Ensures exclusive access
+
     if os.path.exists(used_combinations_path):
         with open(used_combinations_path, "r") as f:
             try:
@@ -243,17 +233,6 @@ def get_unique_image_triplet(background_folder, foreground_folder, mask_folder, 
                 used_combinations = set()
     else:
         used_combinations = set()
-    
-    
-    # Load existing used combinations
-    #if os.path.exists(used_combinations_path):
-    #    with open(used_combinations_path, "r") as f:
-    #        used_combinations = set(tuple(x) for x in json.load(f))
-    #else:
-    #    used_combinations = set()
-
-    #backgrounds = os.listdir(background_folder)
-    #foregrounds = os.listdir(foreground_folder)
 
     valid_image_exts = {'.jpg', '.jpeg', '.png', '.bmp', '.tiff'}
 
@@ -298,13 +277,9 @@ def get_pair_fopa(used_combinations_path):
     background_folder = os.path.join(data_dir, 'background')
     foreground_folder = os.path.join(data_dir, 'foreground')
     mask_folder = os.path.join(data_dir, 'foreground_mask')
-    #used_combinations_path = os.path.join(data_dir, used_combinations_filename)
-    #samples  = []
-    #for i in range(number):
-    pair = get_unique_image_triplet(background_folder, foreground_folder, mask_folder, used_combinations_path)
-    #samples.append(pair)
 
-    #print(pair)
+    pair = get_unique_image_triplet(background_folder, foreground_folder, mask_folder, used_combinations_path)
+   
     return pair
 
 
@@ -358,10 +333,7 @@ def get_custom_bbox(net, combinations_path, area_coverage):
 
     valid_bboxes = []
 
-    #print('FOPA bboxes: ', bboxes)
-
     for bbox in bboxes:
-        #print('FOPA Bbox: ', bbox)
         rescaled_bbox = rescale_bbox_to_original(bbox, background_scale_factors)
         height = rescaled_bbox[3]
         width = rescaled_bbox[2]
@@ -385,18 +357,14 @@ def get_custom_bbox(net, combinations_path, area_coverage):
         y1 = int(center_y - new_height/2)
         x2, y2 = int(x1 + new_width), int(y1 + new_height)
         custom_bbox = [x1, y1, x2, y2]
-        #print('Custom bbox: ', custom_bbox)
 
         # Validation
         if x1 >= 0 and y1 >= 0 and x2 <= bg_width and y2 <= bg_height:
             valid_bboxes.append(custom_bbox)
             print("✅ Custom bbox fits in background.")
             break
-        #else:
-        #    print("❌ Custom bbox goes outside background bounds. Trying other FOPA center coordinates.")
 
     if not valid_bboxes: # If no bbox is valid, because they are out of bounds
-        #print('NO BOUNDING BOXES FIT, FETCHING ANOTHER PAIR...')
         return None
     else:
         pair['bbox'] = custom_bbox #You choose only one of the bboxes
@@ -442,23 +410,14 @@ def get_random_bbox(combinations_path, area_coverage):
             return pair
 
 
-
-
 def naive_composition(pair):
 
     bg_img = pair['background']
     fg_img = pair['foreground']
     fg_mask = pair['foreground_mask']
     custom_bbox = pair['bbox']
-
-    #bg = cv2.imread(bg_img)
-    #fg = cv2.imread(fg_img)
-    #mask = cv2.imread(fg_mask, cv2.IMREAD_GRAYSCALE)
-
-    #print(f"[DEBUG] BG shape: {bg.shape}, FG shape: {fg.shape}, MASK shape: {mask.shape}")
-    #print(f"[DEBUG] BBOX: {custom_bbox}")
     
-    # generate composite images by naive methods
+    # Generate composite images by naive methods
     comp_img, comp_mask = get_composite_image(fg_img, fg_mask, bg_img, custom_bbox, 'none')
 
     return comp_img, comp_mask
@@ -511,9 +470,6 @@ if __name__ == '__main__':
 
     multiprocessing.set_start_method('spawn')
 
-    #result_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'dataset/results', 'training_set')
-    #os.makedirs(result_dir, exist_ok=True)
-
     combinations_json = 'dataset/used_combinations.json'
     foreground_labels = helper_functions.load_json(json_file='dataset/foreground/foreground_labels.json')
     training_labels_json = os.path.join(result_dir, 'training_labels.json')
@@ -529,7 +485,6 @@ if __name__ == '__main__':
         os.remove(csv_file)
 
     # Configuration
-    #total_images = 10
     workers_per_gpu = 2
 
     # Parse logical GPU IDs from CUDA_VISIBLE_DEVICES (e.g., "2,3")
@@ -537,8 +492,6 @@ if __name__ == '__main__':
     visible_gpu_ids = [x.strip() for x in cuda_visible.split(",") if x.strip().isdigit()]
     num_visible_gpus = len(visible_gpu_ids)
     max_concurrent = num_visible_gpus * workers_per_gpu
-
-    #from multiprocessing import Pool
 
     image_index = 1
     successful_count = 0

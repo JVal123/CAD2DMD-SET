@@ -8,6 +8,7 @@ import ast
 import helper_functions
 from itertools import product
 from math import prod
+import argparse
 
 
 class DisplayGenerator:
@@ -32,7 +33,6 @@ class DisplayGenerator:
         except PermissionError:
             print("Error: Permission denied to access the folder.")
             return []
-
 
     def get_measurement_from_file(self, filename):
         with open(f"{self.dict_path}/{filename}", "r") as file:
@@ -66,7 +66,6 @@ class DisplayGenerator:
 
         # Randomly choose an image file
         random_image = random.choice(files)
-        #image_name = random_image.split(".")[0]
 
         return os.path.join(folder_path, random_image), random_image
 
@@ -78,7 +77,6 @@ class DisplayGenerator:
 
         if csv_mode == False:
             # Load image
-            #img_path, img_name = self.get_random_image(real_display_path)
             img_path, img_name = helper_functions.find_image_path(real_display_path, device, mode, dictionary)
         else:
             mode = csv_mode
@@ -92,7 +90,6 @@ class DisplayGenerator:
         # threshold input image as mask 
         mask = cv.threshold(gray, 0, 255, cv.THRESH_BINARY+cv.THRESH_OTSU)[1]
      
-
         # Cleanup
         cv.destroyAllWindows()
 
@@ -102,7 +99,6 @@ class DisplayGenerator:
             if image["image"] == img_name:
                 mode = image["mode"]
                 break
-  
 
         return mask, mode, list_index
 
@@ -115,8 +111,6 @@ class DisplayGenerator:
         # Load existing JSON data into both file_data and dictionary
         with open(json_path, "r") as f:
             file_data = json.load(f)
-
-        #print(dictionary[device][index])
 
         if "rois" not in dictionary[device][index]:
             dictionary[device][index]["rois"] = []
@@ -144,13 +138,11 @@ class DisplayGenerator:
             csv_measurement = ast.literal_eval(csv_measurement)
 
         # Get background and foreground pixel values
-        #print(img)
         background_value, foreground_value = helper_functions.determine_mask_colors(img)
 
         
         mode = combo[0]
         print('Combo: ', combo)
-        #print('Mode: ', mode)
 
         for i in range(dictionary[device][index]["#roi"]):
             x, y, w, h = dictionary[device][index]["rois"][i]
@@ -160,24 +152,18 @@ class DisplayGenerator:
             _, all_measurements = self.get_measurement_from_file(filename=dictionary[device][index]["dictionaries"][i] + ".txt")
 
             measurement = combo[i+1]
-            #print(measurement)
-
-            #print("Current dictionary: ", dictionary[device][index]["dictionaries"][i] + ".txt")
             
             if csv_measurement != False:
                 if str(csv_measurement[i]) not in all_measurements:
                     print('Chosen measurement not possible in current device.')
                 else:
                     measurement = str(csv_measurement[i])
-            
-            #print('Measurement: ', measurement)
 
             # Convert openCV image to PIL Image
             img = Image.fromarray(img)
 
             # Choose a font.
             font_path = self.get_random_font_file()
-            #print("Checking font path:", font_path)
 
             if not os.path.exists(font_path):
                 print("Error: Font file not found!")
@@ -214,11 +200,6 @@ class DisplayGenerator:
         
         if csv_measurement != False:
             measurements = [float(m) for m in measurements]
-
-
-
-        # Show the image
-        #cv.imshow("Final Image:", opencv_img)
 
         # Ensure the directory exists before saving the image
         device_folder = f"{self.output_path}/{device}"
@@ -273,7 +254,6 @@ class DisplayGenerator:
         return max_count, True
             
 
-
     def generate_random_unique_image(self, device, display_number, actual_max, roi_json_path, used_path="used_combinations.json"):
     
         roi_data = helper_functions.load_json(roi_json_path)
@@ -296,15 +276,9 @@ class DisplayGenerator:
                         values = [line.strip() for line in f if line.strip()]
                         dict_values_list.append(values)
 
-                #print('Before getting the combos')
-
                 # Shuffle for random sampling
                 all_combos = list(product(*dict_values_list))
-                #print('All combos: ', all_combos)
-                #print('Device Used: ', device_used, len(device_used))
                 random.shuffle(all_combos)
-
-                #print('Got the combos', len(all_combos))
 
                 for combo in all_combos:
                     combo_key = (mode, *combo)
@@ -324,12 +298,9 @@ class DisplayGenerator:
                         return True
                     
         else:
-
-
             generated_combos = set(device_used)
             attempts = 0
             max_attempts = display_number * 10  # Prevent infinite loop if not enough unique combos
-
 
             while len(generated_combos) < display_number and attempts < max_attempts:
                 mode = random.choice(roi_data[device])["mode"]
@@ -357,80 +328,42 @@ class DisplayGenerator:
 
                 attempts += 1
 
-
-
-            '''modes_amount = len(roi_data[device])
-            mode_number = random.randint(0, modes_amount-1)
-            mode = roi_data[device][mode_number]["mode"]
-            dict_names = roi_data[device][mode_number]["dictionaries"]
-
-            #print('Mode: ', mode)
-            #print('Dict_names: ', dict_names)
-
-
-            dict_values_list = []
-            for dict_name in dict_names:
-                with open(os.path.join(self.dict_path, f"{dict_name}.txt"), "r") as f:
-                    values = [line.strip() for line in f if line.strip()]
-                    dict_values_list.append(values)
-
-            print('Before getting the combos')
-
-            # Shuffle for random sampling
-            #all_combos = list(product(*dict_values_list))
-            #print('All combos: ', all_combos)
-            #print('Device Used: ', device_used, len(device_used))
-            #random.shuffle(all_combos)
-
-            # Step 1: Compute sizes and total number of combinations
-            sizes = [len(lst) for lst in dict_values_list]
-            total_combinations = prod(sizes)
-
-            # Step 2: Limit the number of combos
-            num_samples = min(display_number, total_combinations)
-            indices = np.random.choice(total_combinations, size=num_samples, replace=False)
-
-            print('Got the combos')
-
-            # Step 3: Map indices to combos
-            for idx in indices:
-                multi_idx = np.unravel_index(idx, sizes)
-                combo = tuple(dict_values_list[i][j] for i, j in enumerate(multi_idx))
-                combo_key = (mode, *combo)
-
-            
-
-            #for combo in all_combos:
-            #    combo_key = (mode, *combo)
-                if combo_key not in device_used:
-                    # --- Your image generation logic goes here ---
-                    img, _, list_index = self.remove_background(device=device, mode=mode, dictionary=roi_data)
-                    self.change_measurement(img, device=device, dictionary=roi_data, json_path=roi_json_path, 
-                                            index=list_index, combo=combo_key)
-        
-
-                    # Save the combination
-                    used_combos.setdefault(device, []).append(combo_key)
-
-                    with open(used_path, "w") as f:
-                        json.dump(used_combos, f, indent=4)
-
-                    return True'''
-                    
-        
         return False
 
 
 if __name__ == "__main__":
-    number = 10
-    thresh_value, img_height, img_width = 0, 0, 0
- 
-    generator = DisplayGenerator(input_folder='images/real', dict_folder='dicts', font_folder='fonts', output_folder='images/generated')
-    device_list = generator.get_child_folders()
+
+    parser = argparse.ArgumentParser(description='Generates OCR Ready Dataset')
+    parser.add_argument('-displays_path', type=str, help='Add the path to the displays folder.', dest="displays_path", default='displays')
+    parser.add_argument('-display_number', type=int, help='Define number of display images per device.', dest='display_number', default=10)
+    args = parser.parse_args()
+        
+    display_generator = DisplayGenerator(input_folder='images/real', dict_folder='dicts', font_folder='fonts', output_folder='images/generated')
+    device_list = display_generator.get_child_folders()
+
+    roi_filepath = os.path.abspath("displays/roi_mappings.json")
+    roi_dictionary = helper_functions.load_json(roi_filepath)
+    used_combinations_path = os.path.join(args.displays_path, 'images/generated/used_combinations.json')
+
+    if os.path.exists(used_combinations_path):
+        os.remove(used_combinations_path)
 
     for device_name in device_list:
-        print(f'Generating {device_name} display images:')
+        image_number = helper_functions.count_folder_images(f'displays/images/generated/{device_name}')
+        max_image_number, is_actual_max = display_generator.maximum_display_images(device=device_name, roi_data=roi_dictionary, display_number=args.display_number)
+        if image_number >= args.display_number or image_number >= max_image_number:
+            print(f'The {device_name} display images are already generated. Advancing to next device...')
+        else:
+            print(f'Generating {device_name} display images:')
+            
+            generated = image_number
+            while generated < max_image_number:
+                success = display_generator.generate_random_unique_image(device=device_name, display_number=max_image_number, actual_max=is_actual_max, 
+                                                                         roi_json_path=roi_filepath, used_path=used_combinations_path)
+                
+                if success:
+                    generated += 1
+                else:
+                    break
 
-        #for i in range(0, number):
-          #  img, _, _, _, mode = generator.remove_background(thresh_value, img_height, img_width, device=device_name, select_threshold=False)
-           # generator.change_measurement(img, device=device_name, mode=mode, dictionary=roi_json, json_path=)
+    print('Display Generation Stage Complete! ✅')

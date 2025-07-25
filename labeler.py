@@ -15,7 +15,7 @@ import numpy as np
 def get_qa_pair(device_type, mode, value, json_dict, random_generator):
 
     device_dicts = json_dict[device_type]
-    #print(len(device_dicts))
+
     for index in range(len(device_dicts)):
         if device_dicts[index]["mode"] == mode:
             break
@@ -23,12 +23,6 @@ def get_qa_pair(device_type, mode, value, json_dict, random_generator):
     labels = device_dicts[index]["labels"]
     measurement_type = labels["measurement_type"]
     unit = labels["unit"]
-
-    #print('Device type: ', device_type)
-    #print('Measurement Type: ', measurement_type, len(measurement_type), type(measurement_type))
-    #print('Labels: ', labels)
-    #print('Value: ', value, len(value), type(value))
-    #print('Unit: ', unit, len(unit), type(unit))
 
     if len(measurement_type)==1 and len(unit)==1 and len(value)==1: #1 measurement type and 1 unit qa pairs
 
@@ -47,7 +41,6 @@ def get_qa_pair(device_type, mode, value, json_dict, random_generator):
 
         if first_part != measurement_type: #Ambiguious cases (metronome)
 
-            #print('Ambiguous Case...')
 
             qa_pairs = [
                 {
@@ -282,11 +275,8 @@ def get_qa_pair(device_type, mode, value, json_dict, random_generator):
             }
         ]
 
-    #print(qa_pairs)
     random_index = random_generator.integers(low=0, high=len(qa_pairs))
-    #print(random_index)
     chosen_qa_pair = qa_pairs[random_index]
-    #print(chosen_qa_pair)
 
     return chosen_qa_pair
 
@@ -329,16 +319,6 @@ def get_one_word_qa_pair(device_type, mode, value, json_dict, random_generator):
                     "answer": u
                 }
             ])
-        '''elif i < len(unit):
-            qa_pairs.append({
-                "question": f"What unit is displayed?",
-                "answer": unit[i]
-            })
-        elif i < len(value):
-            qa_pairs.append({
-                "question": f"What is one value shown?",
-                "answer": str(value[i])
-            })'''
 
     idx = random_generator.integers(low=0, high=len(qa_pairs))
     return qa_pairs[idx]
@@ -423,19 +403,6 @@ def generate_training_labels(training_csv, foreground_labels_list, training_labe
                 training_labels_list.append(new_entry)
             else:
                 raise Exception("Foreground labels wrongly built")
-    # Extract the base name of the foreground image (e.g., "img1" from "path/to/img1.png")
-    #foreground_basename = os.path.splitext(os.path.basename(pair['foreground']))[0]
-
-    # Find and append the matching QA pair
-    '''for label in foreground_labels_list:
-        if label['image'] == foreground_basename:
-            new_entry = {
-                "image": comp_img_name,
-                "question": label['question'],
-                "answer": label['answer']
-            }
-            training_labels_list.append(new_entry)
-            break'''
 
     # Save the updated training labels back to the JSON file
     with open(training_labels_path, 'w') as f:

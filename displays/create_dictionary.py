@@ -16,19 +16,14 @@ class DictionaryCreator:
         lowerlimit = lowerlimit*1000 - 1
         upperlimit = upperlimit*1000 + 1
 
-        for i in range(lowerlimit, upperlimit):  # from -600.000 to 600.000 (inclusive) in 0.001 steps
-            val = i / 1000  # exact float value like 591.0, 0.123, etc.
+        for i in range(lowerlimit, upperlimit):
+            val = i / 1000 
 
             # Format value to up to 3 decimal places
             formatted = f"{abs(val):.3f}".rstrip('0').rstrip('.')
-            #formatted = f"{abs(val):.3f}"
 
             if len(formatted) == 3:
                 formatted = f"{formatted}.0"
-            #elif len(formatted) == 2:
-            #    formatted = f"{formatted}.00"
-            #else:
-            #    formatted = f"{formatted}.000"
 
             # Count digits ignoring dot and minus sign
             digit_str = formatted.replace('.', '')
@@ -136,7 +131,6 @@ class DictionaryCreator:
                     dict.write(str(i) + "\n")
 
 
-
     def create_dict(self, models_folder, dict_list_json='dicts_list.json', device_name=None):
         if device_name == None:
             dict_list = helper_functions.load_json(os.path.join(self.output_path, dict_list_json))
@@ -163,7 +157,6 @@ class DictionaryCreator:
 
 if __name__ == "__main__":
     dictionary = DictionaryCreator(output_folder="dicts")
-    #dictionary.create_dict(models_folder='models', device_name='multimeter_DC voltage mV')
     dictionary.create_dict(models_folder='../models')
     
     print('Dictionary Generation Stage Complete! ✅')

@@ -15,6 +15,7 @@ import labeler
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description='Generates OCR Ready Dataset')
+    parser.add_argument('-blender_path', type=str, help="Add the path to blender", dest="blender_path", default="/media/goncalo/3TBHDD/Joao/Thesis_Joao/blender-4.3.2-linux-x64/blender")
     parser.add_argument('-dataset_path', type=str, help='Add the path to the dataset folder.', dest="dataset_path", default='dataset')
     parser.add_argument('-foreground_path', type=str, help='Add the path to the foreground images.', dest="foreground_path", default='dataset/foreground')
     parser.add_argument('-background_path', type=str, help='Add the path to the background images.', dest="background_path", default='dataset/background')
@@ -25,6 +26,7 @@ if __name__ == "__main__":
     parser.add_argument('-render_number', type=int, help='Define number of render images per device.', dest='render_number', default=10)
     parser.add_argument('-p', '-prob', type=float, help='Add the probability.', dest='prob', default=None)
     args = parser.parse_args()
+    blender_path = args.blender_path
     dataset_path = args.dataset_path
     foreground_path = args.foreground_path
     background_path = args.background_path
@@ -36,13 +38,6 @@ if __name__ == "__main__":
     prob = args.prob
 
     rng = np.random.default_rng(seed=42)
-
-    # ---------------- Create Dictionaries ---------------------------
-
-    #dictionary = create_dictionary.DictionaryCreator(output_folder="dicts")
-    #dictionary.create_dict(models_folder='models', device_name='metronome')
-
-    #print('Dictionary Generation Stage Complete! ✅')
 
     # ---------------- Create Displays -------------------------------
  
@@ -56,10 +51,6 @@ if __name__ == "__main__":
     if os.path.exists(used_combinations_path):
         os.remove(used_combinations_path)
 
-    #Force display number to be much higher than render number to reduce chances of choosing the same measurement twice
-    #display_number = 5*render_number
-
-
     for device_name in device_list:
         image_number = helper_functions.count_folder_images(f'displays/images/generated/{device_name}')
         max_image_number, is_actual_max = display_generator.maximum_display_images(device=device_name, roi_data=roi_dictionary, display_number=display_number)
@@ -67,31 +58,21 @@ if __name__ == "__main__":
             print(f'The {device_name} display images are already generated. Advancing to next device...')
         else:
             print(f'Generating {device_name} display images:')
-            # Get the first image of the device and save the ROI coordinates  
-            #img, thresh_value, img_height, img_width, mode = display_generator.remove_background(thresh_value, img_height, img_width, device=device_name, select_threshold=True)
-            #x, y, width, height = display_generator.change_measurement(img, device=device_name, mode=mode, x=x, y=y, w=width, h=height, selectROI=True)
 
             generated = image_number
             while generated < max_image_number:
-            #for i in range(image_number, max_image_number):
-                #print('Iteration: ', generated)
                 success = display_generator.generate_random_unique_image(device=device_name, display_number=max_image_number, actual_max=is_actual_max, 
                                                                          roi_json_path=roi_filepath, used_path=used_combinations_path)
                 
                 if success:
                     generated += 1
                 else:
-                    #print(f"No more unique combinations left for {device_name}.")
                     break
-                
-                #img, mode, list_index = display_generator.remove_background(device=device_name, dictionary=roi_dictionary)
-                #display_generator.change_measurement(img, device=device_name, mode=mode, dictionary=roi_dictionary, json_path=roi_filepath, index=list_index)
 
     print('Display Generation Stage Complete! ✅')
     
     # ---------------- Renders -------------------------------------------
 
-    blender_path = "/media/goncalo/3TBHDD/Joao/Thesis_Joao/blender-4.3.2-linux-x64/blender" # Maybe add to the argument parser
     render_generator = render_script.DataGenerator(models_folder='models', output_folder=foreground_path)
 
     # Json filepaths
@@ -99,10 +80,8 @@ if __name__ == "__main__":
     indices_filepath = os.path.abspath("models/face_indices.json")
     display_colors_filepath = os.path.abspath("display_colors.json")
     face_uv_rotation_filepath = os.path.abspath("uv_rotation.json")
-    #render_parameters_filepath = os.path.abspath("render_parameters.json") 
     render_parameters = helper_functions.load_json("render_parameters.json")
     csv_file = os.path.join(foreground_path, "foreground.csv")
-    #print('CSV Filename: ', csv_file)
     columns = ["Image", "Device", "Mode", "Measurement", "Display Color", "Camera Distance", "Camera Shift X", "Camera Shift Y",
                 "Camera Focal Length", "Object Rotation X", "Object Rotation Y", "Object Rotation Z", "Negative Case Rotation Z", "Light Color",
                 "Light Energy", "Light Falloff", "Light Radius", "Light Distance X", "Light Distance Y", "Light Distance Z", 
@@ -126,11 +105,7 @@ if __name__ == "__main__":
         if model.endswith(".blend"):
             model_path = os.path.join(render_generator.models_folder, model)
             output_path = os.path.join(render_generator.output_folder, os.path.splitext(model)[0])
-            model_name = os.path.splitext(model)[0]
-
-            #print('Model path: ', model_path)
-
-            
+            model_name = os.path.splitext(model)[0]            
 
             face_index = render_generator.get_json_value(model_name, indices_filepath)
             face_uv_rotation = render_generator.get_json_value(model_name, face_uv_rotation_filepath)
@@ -148,32 +123,16 @@ if __name__ == "__main__":
                 
                 render_generator.set_render_settings(render_parameters)
 
-                #display_visibility_ratio = 0
                 full_object_visibility = False
 
-                #face_index = render_generator.get_json_value(model_name, indices_filepath)
-                #face_uv_rotation = render_generator.get_json_value(model_name, face_uv_rotation_filepath)
-                #random_image = render_script.get_random_image(f'images/generated/{model_name}')
                 random_image, mode, measurement = helper_functions.get_random_image(f'displays/images/generated/{model_name}')
                 display_color = render_generator.add_display_texture(object, face_index, face_uv_rotation, image_path=random_image, display_color_path=display_colors_filepath)
 
-                #while (display_visibility_ratio < 0.8 and full_object_visibility == False):
                 while full_object_visibility == False:
                     camera_distance, shift_x, shift_y, focal_length= render_generator.translate_camera(camera, object, render_parameters)
                     x_rotation, y_rotation, z_rotation, neg_case_rotation = render_generator.rotate_object(object, initial_rotation, render_parameters)
 
-                    #if neg_case_rotation != False: #Negative case scenarios don't matter for display visibility
-                    #    break
-
-                    #display_visibility_ratio = render_generator.get_display_visibility_ratio(camera, object, face_index)
                     full_object_visibility = render_generator.is_object_fully_visible(camera, object)
-
-                    '''print(f"Object visibility ratio: {object_visibility_ratio*100:.2f}%")
-
-                    if object_visibility_ratio >= 1:
-                        print("Display is sufficiently visible!")
-                    else:
-                        print("Too much display is outside view. Re-randomizing.")'''
 
                 color, energy, falloff, radius, x_distance, y_distance, z_distance = render_generator.translate_light(light, object, render_parameters)
 

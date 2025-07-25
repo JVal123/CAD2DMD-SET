@@ -78,13 +78,8 @@ class DataGenerator:
         self.models_folder = os.path.join(script_dir, models_folder)
         self.output_folder = os.path.join(script_dir, output_folder)
 
-        # Ensure that the output folder exists and eliminates existing one
-        #if os.path.exists(self.output_folder):
-        #    shutil.rmtree(self.output_folder)
         os.makedirs(self.output_folder, exist_ok=True)
         
-        
-        #os.makedirs(self.output_folder, exist_ok=True)
 
     def set_render_settings(self, dictionary):
         """
@@ -129,16 +124,10 @@ class DataGenerator:
         object.rotation_euler = initial_rotation #Reset the object's rotation
 
         negative_case_prob = dictionary["object"]["negative_case"]["prob"]
-        #print(negative_case_prob)
 
         if random.random() < negative_case_prob:  
             # Apply a different rotation for 10% of cases
-            #x_rotation = random.uniform(math.radians(-80), math.radians(80))
-            #y_rotation = random.uniform(math.radians(-40), math.radians(40))
             z_rotation = random.uniform(math.radians(dictionary["object"]["negative_case"]["z_rotation"][0]), math.radians(dictionary["object"]["negative_case"]["z_rotation"][1]))
-
-            #bpy.ops.transform.rotate(value=x_rotation, orient_axis='X', orient_type='GLOBAL')
-            #bpy.ops.transform.rotate(value=y_rotation, orient_axis='Y', orient_type='GLOBAL')
             bpy.ops.transform.rotate(value=z_rotation, orient_axis='Z', orient_type='GLOBAL')
 
             print('NEGATIVE CASE CREATED')
@@ -207,35 +196,25 @@ class DataGenerator:
         bpy.context.scene.unit_settings.scale_length = 1.0  #Change the scale length to change from meters to another
 
         max_dimension = max(object.dimensions)
-        #print('Object Dimensions: ', object.dimensions)
-        #print('Max Dimension: ', max_dimension)
         distance = random.uniform(dictionary["camera"]["relative_distance"][0], dictionary["camera"]["relative_distance"][1])* max_dimension #Defines a random distance between the camera and object, based on its maximum dimension
-        #shift_x = random.uniform(dictionary["camera"]["relative_shift_x"][0], dictionary["camera"]["relative_shift_x"][1]) * distance #Defines a random camera horizontal shift
-        #shift_y = random.uniform(dictionary["camera"]["relative_shift_y"][0], dictionary["camera"]["relative_shift_y"][1]) * distance #Defines a random camera vertical shift
+        shift_x = random.uniform(dictionary["camera"]["relative_shift_x"][0], dictionary["camera"]["relative_shift_x"][1]) * distance #Defines a random camera horizontal shift
+        shift_y = random.uniform(dictionary["camera"]["relative_shift_y"][0], dictionary["camera"]["relative_shift_y"][1]) * distance #Defines a random camera vertical shift
         camera_settings = bpy.types.Camera(camera.data)
 
         camera_settings.lens_unit = 'MILLIMETERS' #Set the focal length to millimeters
         camera_settings.lens = random.randint(dictionary["camera"]["focal_length"][0], dictionary["camera"]["focal_length"][1]) #Set a random focal length value 
 
-        #camera_settings.shift_x = shift_x #Applies the camera horizontal shift
-        #camera_settings.shift_y = shift_y #Applies the camera vertical shift
-
+        camera_settings.shift_x = shift_x #Applies the camera horizontal shift
+        camera_settings.shift_y = shift_y #Applies the camera vertical shift
 
         camera.location =  mathutils.Vector((0.0, -1.0, 1.0))
-        #print('Max dimension: ', max_dimension)
-        #print('Camera location: ', camera.location)
         focus_direction = camera.location - object.location #Vector pointing from the object to the camera
         rot_quat = focus_direction.to_track_quat('Z', 'Y') #Aligns the Z axis of the camera to the focus direction (Y axis is as the secondary reference)
 
         camera.rotation_euler = rot_quat.to_euler() #Converts the camera's quaternion to euler representation
         camera.location = object.location + (rot_quat @ mathutils.Vector((0.0, 0.0, distance))) #Places the camera at the specified distance
 
-        #print('Distance: ', distance)
-        #rint('Camera shift-x: ', camera_settings.shift_x)
-        #print('Camera shift-y: ', camera_settings.shift_y)
-
-        #return distance, shift_x, shift_y, camera_settings.lens
-        return distance, 0, 0, camera_settings.lens
+        return distance, shift_x, shift_y, camera_settings.lens
 
     def force_translate(self, camera, object, dictionary):
         """
@@ -250,31 +229,25 @@ class DataGenerator:
         bpy.context.scene.unit_settings.scale_length = 1.0  #Change the scale length to change from meters to another
 
         distance = dictionary["camera"]["distance"]
-        #shift_x = random.uniform(dictionary["camera"]["relative_shift_x"][0], dictionary["camera"]["relative_shift_x"][1]) * distance #Defines a random camera horizontal shift
-        #shift_y = random.uniform(dictionary["camera"]["relative_shift_y"][0], dictionary["camera"]["relative_shift_y"][1]) * distance #Defines a random camera vertical shift
+        shift_x = random.uniform(dictionary["camera"]["relative_shift_x"][0], dictionary["camera"]["relative_shift_x"][1]) * distance #Defines a random camera horizontal shift
+        shift_y = random.uniform(dictionary["camera"]["relative_shift_y"][0], dictionary["camera"]["relative_shift_y"][1]) * distance #Defines a random camera vertical shift
         camera_settings = bpy.types.Camera(camera.data)
 
         camera_settings.lens_unit = 'MILLIMETERS' #Set the focal length to millimeters
         camera_settings.lens = dictionary["camera"]["focal_length"] #Set the focal length value 
 
-        #camera_settings.shift_x = shift_x #Applies the camera horizontal shift
-        #camera_settings.shift_y = shift_y #Applies the camera vertical shift
+        camera_settings.shift_x = shift_x #Applies the camera horizontal shift
+        camera_settings.shift_y = shift_y #Applies the camera vertical shift
 
 
         camera.location =  mathutils.Vector((0.0, -1.0, 1.0))
-        #print('Max dimension: ', max_dimension)
-        #print('Camera location: ', camera.location)
         focus_direction = camera.location - object.location #Vector pointing from the object to the camera
         rot_quat = focus_direction.to_track_quat('Z', 'Y') #Aligns the Z axis of the camera to the focus direction (Y axis is as the secondary reference)
 
         camera.rotation_euler = rot_quat.to_euler() #Converts the camera's quaternion to euler representation
         camera.location = object.location + (rot_quat @ mathutils.Vector((0.0, 0.0, distance))) #Places the camera at the specified distance
 
-        #print('Distance: ', distance)
-        #rint('Camera shift-x: ', camera_settings.shift_x)
-        #print('Camera shift-y: ', camera_settings.shift_y)
-
-        return distance, 0, 0, camera_settings.lens
+        return distance, shift_x, shift_y, camera_settings.lens
 
 
 
@@ -300,8 +273,6 @@ class DataGenerator:
                 light.data.energy = random.uniform(dictionary["light"]["energy"][0], dictionary["light"]["energy"][1]) #Defines the light intensity
                 light.data.use_soft_falloff = dictionary["light"]["falloff"]  #Apply falloff to avoid sharp edges when the light geometry intersects with other objects
                 light.data.shadow_soft_size = random.uniform(dictionary["light"]["radius"][0], dictionary["light"]["radius"][1]) #Defines the light radius
-                #print('Point Light Intensity: ', light.data.energy)
-                #print('Point Light Radius: ', light.data.shadow_soft_size)
             case 1:
                 light.data.type = 'SUN'
             case 2:
@@ -312,8 +283,6 @@ class DataGenerator:
         z_distance = random.uniform(dictionary["light"]["relative_z_distance"][0], dictionary["light"]["relative_z_distance"][1]) * max_dimension #Defines a random z-axis distance between the light and object
 
         light.location = object.location + mathutils.Vector((x_distance, y_distance, z_distance)) #Places the light at the specified distances
-        #light.location = object.location + mathutils.Vector((0, -1, 1)) 
-        #print('Distances: ', x_distance, y_distance, z_distance)
 
         return color_vector, light.data.energy, light.data.use_soft_falloff, light.data.shadow_soft_size, x_distance, y_distance, z_distance
 
@@ -346,8 +315,6 @@ class DataGenerator:
         z_distance = dictionary["light"]["z_distance"] #Defines the z-axis distance between the light and object
 
         light.location = object.location + mathutils.Vector((x_distance, y_distance, z_distance)) #Places the light at the specified distances
-        #light.location = object.location + mathutils.Vector((0, -1, 1)) 
-        #print('Distances: ', x_distance, y_distance, z_distance)
 
         return color_vector, light.data.energy, light.data.use_soft_falloff, light.data.shadow_soft_size, x_distance, y_distance, z_distance
 
@@ -389,12 +356,10 @@ class DataGenerator:
 
         if not display_polygon.is_valid:
             # Reconstructs the geometry by buffering it outward by 0 units, in case the polygon is not valid
-            #print('Polygon was not valid...')
             display_polygon = display_polygon.buffer(0) 
 
         if not camera_view_box.is_valid:
             # Reconstructs the geometry by buffering it outward by 0 units, in case the polygon is not valid
-            #print('Polygon was not valid...')
             camera_view_box = camera_view_box.buffer(0)  
 
         # Clip display polygon with camera view
@@ -463,29 +428,14 @@ class DataGenerator:
 
         # Get the UV coordinates of the face
         uv_coords = [uv_layer[loop_index].uv for loop_index in face.loop_indices]
-        #print(uv_coords)
 
         # Calculate UV center
         uv_center = sum(uv_coords, mathutils.Vector((0, 0))) / len(uv_coords)
-        #print(uv_center)
 
         # Offset to center the UV map on (0.5, 0.5)
         offset = mathutils.Vector((0.5, 0.5)) - uv_center
         uv_coords = [uv + offset for uv in uv_coords]
-        #print('UV coords after offset: ', uv_coords)
 
-        # Get image dimensions
-        #image_width, image_height = image.size
-
-        # Compute aspect ratios
-        '''uv_aspect_ratio = abs((uv_coords[1].x - uv_coords[0].x)/ (uv_coords[2].y - uv_coords[1].y)) if uv_coords[1].x != uv_coords[0].x else None
-        image_aspect_ratio = image_width / image_height
-        print('UV aspect ratio: ', uv_aspect_ratio)
-        print('Image aspect ratio: ', image_aspect_ratio)'''
-
-        # Conditions to apply face uv map rotation 
-        #if ((uv_aspect_ratio > 1 and image_aspect_ratio < 1) or (uv_aspect_ratio < 1 and image_aspect_ratio > 1)):
-            #angle = math.radians(-90)
         angle = math.radians(uv_rotation)
         rot_matrix = mathutils.Vector((math.cos(angle), -math.sin(angle))), mathutils.Vector((math.sin(angle), math.cos(angle)))
 
@@ -576,8 +526,6 @@ class DataGenerator:
         background_value, _ = helper_functions.determine_mask_colors(img)
         if background_value == 255: 
             color_ramp.color_ramp.elements[1].color = display_color
-        #print('Display color: ', display_color)
-
 
         # Link nodes
         mat.node_tree.links.new(tex_image.outputs['Color'], color_ramp.inputs['Fac'])  # Image controls ColorRamp
@@ -593,7 +541,6 @@ class DataGenerator:
 
         # Assign the material to the selected face
         object.data.polygons[face_index].material_index = len(object.data.materials) - 1
-        #print('Material assigned')
 
         # Ensure the object has a UV map
         if not object.data.uv_layers:
@@ -705,92 +652,3 @@ class DataGenerator:
 
         print(f"Intrinsic images saved in: {output_dir}")
 
-
-
-if __name__ == "__main__":
-    blender_path = "/media/goncalo/3TBHDD/Joao/Thesis_Joao/blender-4.3.2-linux-x64/blender"
-    generator = DataGenerator()
-    render_number = 10
-
-    current_engine = bpy.context.scene.render.engine
-    print("Current render engine:", current_engine)
-
-    # --- Individual Version -------------------------------------------------------------
-
-    model_path = os.path.abspath("models/metronome.blend")
-    output_path = generator.output_folder
-    indices_filepath = os.path.abspath("models/face_indices.json")
-    display_colors_filepath = os.path.abspath("display_colors.json")
-    render_parameters = helper_functions.load_json("render_parameters.json")
-    face_uv_rotation_filepath = os.path.abspath("uv_rotation.json")
-    backgrounds_path = os.path.abspath("backgrounds/indoorCVPR_09")
-
-    #print('Model path: ', model_path)
-
-    # Open the .blend file
-    bpy.ops.wm.open_mainfile(filepath=model_path)
-
-    camera = bpy.data.objects.get("Camera")
-    light = bpy.data.objects.get("Light")
-    object = bpy.data.objects['3DModel']
-
-    initial_rotation = copy.deepcopy(object.rotation_euler)
-
-    face_index = generator.get_json_value('metronome', indices_filepath)
-    face_uv_rotation = generator.get_json_value('metronome', face_uv_rotation_filepath)
-    #random_image = render_script.get_random_image(f'images/generated/{model_name}')
-    random_image, mode, measurement = helper_functions.get_random_image(f'displays/images/generated/metronome')
-    generator.add_display_texture(object, face_index, face_uv_rotation, image_path=random_image, display_color_path=display_colors_filepath)
-
-    rel_distance, shift_x, shift_y, focal_length= generator.translate_camera(camera, object, render_parameters)
-    x_rotation, y_rotation, z_rotation, neg_case_rotation = generator.rotate_object(object, initial_rotation, render_parameters)
-    color, energy, falloff, radius, x_distance, y_distance, z_distance = generator.translate_light(light, object, render_parameters)
-    #render_generator.add_background(backgrounds_path)
-
-    image_name = str(f'img')
-
-    generator.img_decomposition(image_name, backgrounds_path)
-
-    # --- Loop Version -----------------------------------------------------------
-
-    # Loop through all .blend files
-    '''for model in os.listdir(generator.models_folder):
-        if model.endswith(".blend"):
-            model_path = os.path.join(generator.models_folder, model)
-            output_path = os.path.join(generator.output_folder, os.path.splitext(model)[0])
-
-            #print('Model path: ', model_path)
-
-            # Open the .blend file
-            bpy.ops.wm.open_mainfile(filepath=model_path)
-
-            camera = bpy.data.objects.get("Camera")
-            light = bpy.data.objects.get("Light")
-            object = bpy.data.objects['3DModel']
-
-            # ----------- Render Process ---------------
-            
-            generator.set_render_settings()
-
-            initial_rotation = copy.deepcopy(object.rotation_euler)
-
-            for i in range(1, render_number + 1):
-                generator.translate_camera(camera, object)
-                generator.rotate_object(object, initial_rotation, negative_case_prob=0.05)
-                #generator.render_depth(os.path.splitext(model)[0])
-                generator.translate_light(light, object)
-
-                # Set render output file path
-                #bpy.context.scene.render.filepath = f"{output_path}_{i}.png"
-
-                #bpy.ops.render.render(write_still=True)
-
-                image_name = str(os.path.splitext(model)[0]) + f'_{i}'
-
-                generator.img_decomposition(image_name)
-
-    
-    rename_images_in_folder('dataset')'''
-            
-
-    print("✅ Dataset Generation complete!")

@@ -59,9 +59,6 @@ def add_motion_blur(dataset_folder_path, csv_file, prob=0.2):
             kernel = get_motion_blur_kernel(x, y, thickness=1, ksize=kernel_size)
 
             img_blurred = cv.filter2D(img, -1, kernel) # Apply the random kernel
-            #print(f"Applied motion blur to {img_path}")
-            #print('Parameters:')
-            #print(f'x = {x}\ny= {y}\nkernel size = {kernel_size}\n')
 
             # Overwrite the original image
             cv.imwrite(img_path, img_blurred)
@@ -99,11 +96,10 @@ def force_motion_blur(dataset_folder_path, dictionary, img_name):
         return False
 
     # Get the kernel size
-    # The greater the size, the more the motion
+    # The greater the size, the greater the motion
     x = dictionary['motion_blur'][0]
     y = dictionary['motion_blur'][1]
-    kernel_size = dictionary['motion_blur'][2]
-    #print(x, y, kernel_size)   
+    kernel_size = dictionary['motion_blur'][2]   
 
 
     kernel = get_motion_blur_kernel(x, y, thickness=1, ksize=kernel_size)
@@ -125,21 +121,15 @@ def generate_masks_from_depth(rgb_folder, depth_folder, output_folder, threshold
         threshold (float): Depth threshold (0.0 to 1.0) below which pixels are considered foreground.
     """
     
-    #if os.path.exists(output_folder):
-    #    shutil.rmtree(output_folder)
     os.makedirs(output_folder, exist_ok=True)
     
     for filename in os.listdir(rgb_folder):
         if not filename.lower().endswith((".png", ".jpg", ".jpeg")):
             continue
 
-        #print('Depth folder: ', depth_folder)
-
         base_name = os.path.splitext(filename)[0]
         depth_filename = f"{base_name}_depth.png"
         depth_path = os.path.join(depth_folder, depth_filename)
-
-        #print('Depth path:' ,depth_path)
         
         if not os.path.exists(depth_path):
             print(f"⚠️ Depth image not found for: {filename}")
@@ -158,7 +148,6 @@ def generate_masks_from_depth(rgb_folder, depth_folder, output_folder, threshold
         # Save binary mask
         mask_output_path = os.path.join(output_folder, f"{base_name}_mask.png")
         cv.imwrite(mask_output_path, mask)
-        #print(f"✅ Saved mask: {mask_output_path}")
 
 
 def force_masks_from_depth(rgb_image_path, depth_image_path, output_folder, threshold=0.95):
@@ -191,7 +180,6 @@ def force_masks_from_depth(rgb_image_path, depth_image_path, output_folder, thre
 
     os.makedirs(output_folder, exist_ok=True)
     cv.imwrite(mask_output_path, mask)
-    #print(f"✅ Saved mask: {mask_output_path}")
 
 
 if __name__ == '__main__':

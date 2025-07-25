@@ -63,8 +63,6 @@ if __name__ == "__main__":
     parser.add_argument("--tsv_path", help="Path to output test set labels in tsv format")
     args = parser.parse_args()
 
-    #labels_in_tsv(args.input_labels, args.image_dir, args.tsv_path)
-
     # --------- Creating test set labels ----------------------------- 
     roi_filepath = os.path.abspath("displays/roi_mappings.json")
     rng = np.random.default_rng(seed=42)

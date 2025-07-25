@@ -16,6 +16,7 @@ import helper_functions
 if __name__=="__main__":
 
     parser = argparse.ArgumentParser(description='Modifies Dataset Images of Choice')
+    parser.add_argument('-blender_path', type=str, help='Add the path to blender.', dest="blender_path", default="/media/goncalo/3TBHDD/Joao/Thesis_Joao/blender-4.3.2-linux-x64/blender")
     parser.add_argument('-dataset_path', type=str, help='Add the path to the dataset folder.', dest="dataset_path", default='dataset')
     parser.add_argument('-foreground_path', type=str, help='Add the path to the foreground images.', dest="foreground_path", default='dataset/foreground')
     parser.add_argument('-background_path', type=str, help='Add the path to the background images.', dest="background_path", default='dataset/background')
@@ -23,10 +24,8 @@ if __name__=="__main__":
     parser.add_argument('-output_passes_path', type=str, help='Add the path to the output passes images.', dest="output_passes_path", default='dataset/output_passes')
     parser.add_argument('-csv_path', type=str, help='Add the csv filepath.', dest="csv_path", default='dataset.csv')
     parser.add_argument("-img_number", type=str, help='Select the image you want to modify.', dest="img_number", default='img1')
-    #parser.add_argument('-display_number', type=int, help='Define number of display images per device.', dest='display_number', default=10)
-    #parser.add_argument('-render_number', type=int, help='Define number of render images per device.', dest='render_number', default=10)
-    #parser.add_argument('-p', '-prob', type=float, help='Add the probability.', dest='prob', default=None)
     args = parser.parse_args()
+    blender_path=args.blender_path
     dataset_path = args.dataset_path
     foreground_path = args.foreground_path
     background_path = args.background_path
@@ -34,14 +33,11 @@ if __name__=="__main__":
     output_passes_path = args.output_passes_path
     csv_path = args.csv_path
     img_number = args.img_number
-    #display_number = args.display_number
-    #render_number = args.render_number
-    #prob = args.prob
+
 
 # ---------------- Get Csv Information ----------------------------------
 
     result = helper_functions.get_image_data(csv_path, img_number)
-    #print('Result:', result)
     
 # ---------------- Change Display Information -------------------------------
  
@@ -59,7 +55,6 @@ if __name__=="__main__":
     
     # ---------------- Render -------------------------------------------
 
-    blender_path = "/media/goncalo/3TBHDD/Joao/Thesis_Joao/blender-4.3.2-linux-x64/blender" # Maybe add to the argument parser
     render_generator = render_script.DataGenerator()
 
     # Json filepaths
@@ -67,10 +62,7 @@ if __name__=="__main__":
     indices_filepath = os.path.abspath("models/face_indices.json")
     display_colors_filepath = os.path.abspath("display_colors.json")
     face_uv_rotation_filepath = os.path.abspath("uv_rotation.json")
-    #temporary_json_filepath = helper_functions.create_temp_json("temporary_parameters.json", result)
-    #render_parameters = helper_functions.load_json(temporary_json_filepath)
     render_parameters = helper_functions.format_dict(result)
-    #print('Render parameters: ', render_parameters)
 
     csv_file = "dataset.csv"
     columns = ["Image", "Device", "Mode", "Measurement", "Display Color", "Camera Distance", "Camera Shift X", "Camera Shift Y",
@@ -87,8 +79,6 @@ if __name__=="__main__":
             model_path = os.path.join(render_generator.models_folder, model)
             output_path = os.path.join(render_generator.output_folder, os.path.splitext(model)[0])
             model_name = os.path.splitext(model)[0]
-
-            #print('Model path: ', model_path)
 
             # Open the .blend file
             bpy.ops.wm.open_mainfile(filepath=model_path)
@@ -130,13 +120,6 @@ if __name__=="__main__":
     helper_functions.rename_single_image(folder_path='dataset', img_name=image_name)
 
     print("New image generated! ✅")
-
-    # ------------------ Label Generation -----------------------
-
-
-    
-    
-    #print("Label Generation Stage Complete! ✅")
 
     # ------------------ Post Processing -------------------------
 

@@ -20,30 +20,30 @@ import re
 # ------------- Image Functions ----------------------------------------
 
 def determine_mask_colors(mask):
-        """
-        Given a binary mask (0 and 255), determine which value is background and which is foreground.
+    """
+    Given a binary mask (0 and 255), determine which value is background and which is foreground.
+    
+    Args:
+        mask (np.ndarray): Binary image with pixel values 0 and 255.
         
-        Args:
-            mask (np.ndarray): Binary image with pixel values 0 and 255.
-            
-        Returns:
-            background (int): Background pixel value
-            foreground (int): Foreground pixel value 
-        """
-        # Flatten the image and count 0s and 255s
-        unique, counts = np.unique(mask, return_counts=True)
-        pixel_counts = dict(zip(unique, counts))
+    Returns:
+        background (int): Background pixel value
+        foreground (int): Foreground pixel value 
+    """
+    # Flatten the image and count 0s and 255s
+    unique, counts = np.unique(mask, return_counts=True)
+    pixel_counts = dict(zip(unique, counts))
 
-        if 0 not in pixel_counts or 255 not in pixel_counts:
-            raise ValueError("Mask must contain both 0 and 255 pixel values.")
+    if 0 not in pixel_counts or 255 not in pixel_counts:
+        raise ValueError("Mask must contain both 0 and 255 pixel values.")
 
-        # Background is assumed to be the majority class
-        if pixel_counts[0] > pixel_counts[255]:
-            background, foreground = 0, 255
-            return background, foreground
-        else:
-            background, foreground = 255, 0
-            return background, foreground
+    # Background is assumed to be the majority class
+    if pixel_counts[0] > pixel_counts[255]:
+        background, foreground = 0, 255
+        return background, foreground
+    else:
+        background, foreground = 255, 0
+        return background, foreground
 
 
 def extract_frames_from_video(video_path, output_folder, desired_fps):
@@ -131,7 +131,6 @@ def get_bounding_box_xywh(mask_path):
 # -------------- Folder and Subfolder Functions -------------------------------------
 
 def find_image_path(folder_path: str, device: str, mode: str, dictionary):
-
     """
     Searches for the image name with the given mode in the dictionary and returns its full path.
     
@@ -155,18 +154,6 @@ def find_image_path(folder_path: str, device: str, mode: str, dictionary):
             if img_dict["mode"] == mode:
                 img_file = img_dict["image"]
                 return os.path.join(folder_path, img_file), img_file
-        
-        '''# List all files in the directory
-        files = os.listdir(folder_path)
-        
-        # Look for files that match the pattern: image_name + any image extension
-        for file in files:
-            file_name, file_ext = os.path.splitext(file)
-            
-            # Check if the filename matches and the extension is an image extension
-            if file_name == image_name and file_ext.lower() in image_extensions:
-                # Return the full path to the image
-                return os.path.join(folder_path, file)'''
         
         # If we get here, no matching image was found
         print(f"No image found with mode '{mode}' in folder '{folder_path}'")
@@ -205,9 +192,6 @@ def get_random_image(folder_path):
     Given a folder path, returns a random image file from the folder.
     """
 
-    # Get the absolute path
-    #folder_path = os.path.join(os.path.abspath(os.path.dirname( __file__ )), folder_path)
-
     # Get list of image files (assuming common image extensions)
     image_extensions = {".jpg", ".jpeg", ".png", ".gif", ".bmp", ".tiff"}
     image_files = [f for f in os.listdir(folder_path) 
@@ -232,10 +216,7 @@ def get_random_image(folder_path):
             index +=1
         
     mode = parts[index-1] if len(parts) >= 3 else None
-    #measurements = [float(m) for m in parts[index:]] if len(parts) >= 3 else None
     measurements = [str(m) for m in parts[index:]] if len(parts) >= 3 else None
-
-    #print(parts, mode, measurements)
     
     return random_image, mode, measurements
 
@@ -259,7 +240,6 @@ def rename_images_in_folder(input_folder):
                 new_path = os.path.join(root, new_name)
                 if not os.path.exists(new_path):
                     shutil.move(file_path, new_path)
-                    #print(f"Renamed: {file} -> {new_name}")
 
 
 def rename_single_image(folder_path, img_name):
@@ -281,8 +261,6 @@ def rename_single_image(folder_path, img_name):
         new_path = os.path.join(folder_path, new_name)
         shutil.move(file_path, new_path)
         print(f"Renamed: {image_name} -> {new_name}")
-        #else:
-        #    print(f"Target file already exists: {new_path}")
     else:
         print("New name is either empty or identical to the original.")
 
@@ -440,10 +418,6 @@ def format_dict(data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
 
 def load_json(json_file: str, initializer = {}, delete=False):
     """Loads the JSON file into a dictionary. Creates an empty json file in case in doesn't already exist"""
-    
-    # Remove file if it exists and you want to delete it
-    #if (delete==True and os.path.exists(json_file)):
-    #    os.remove(json_file)
 
     if not os.path.exists(json_file):
         with open(json_file, 'w') as file:
@@ -541,45 +515,3 @@ def get_image_data(csv_path: str, image_name: str) -> Optional[Dict[str, Any]]:
         print(f"Error: {str(e)}")
         return None
 
-
-
-
-if __name__=="__main__":
-    #crop_images_in_folder(input_folder='dataset/background', output_folder='dataset/background_cropped')
-
-    # ---------- Extract frames from video files -----------------------------------------------------
-    
-    #output_folder = 'test_set/'
-    #extract_frames_from_folder(input_folder='videos', output_root_folder=output_folder, desired_fps=3)
-
-    # ----------- Generate numbered test set images from device folders with test images -----------------
-
-    #consolidate_images('test_set/')
-
-    # ----------- Bounding Boxes Test -------------------------------------------------------------------
-
-    '''#Step 1: Get the bounding box from the mask
-    mask_path = '/media/goncalo/3TBHDD/Joao/Thesis_Joao/CAD2DMD-SET/dataset/foreground_mask/img29_mask.png'
-    bbox = get_bounding_box_xywh(mask_path)
-    print(bbox)
-
-    # Step 2: Load the corresponding foreground image
-    image_path = '/media/goncalo/3TBHDD/Joao/Thesis_Joao/CAD2DMD-SET/dataset/foreground/img29.png'
-    image = cv2.imread(image_path)
-
-    # Step 3: Draw the bounding box on the image
-    if bbox:
-        x, y, w, h = bbox
-        # Draw rectangle: image, top-left, bottom-right, color(BGR), thickness
-        cv2.rectangle(image, (x, y), (x + w, y + h), (0, 255, 0), 2)
-
-        # Optional: Display the image with bounding box
-        cv2.imshow("Bounding Box", image)
-        cv2.waitKey(0)
-        cv2.destroyAllWindows()
-    else:
-        print("No foreground found in mask.")'''
-    
-    # ----------- Ensure background images high resolution  -------------------------------------------------------------------
-
-    remove_low_resolution_images("dataset/background", min_width=800, min_height=600)

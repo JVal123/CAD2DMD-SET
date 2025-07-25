@@ -5,8 +5,8 @@
     },
     "camera": {
         "relative_distance": [8, 10],
-        "relative_shift_x": [-0.05, 0.05],
-        "relative_shift_y": [-0.05, 0.05],
+        "relative_shift_x": [0, 0],
+        "relative_shift_y": [0, 0],
         "focal_length": [40, 200]
     },
     "object": {
