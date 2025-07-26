@@ -16,13 +16,14 @@ DISPLAY_NUMBER=3 # Number of display images per device
 # Foreground Generator Arguments
 
 BLENDER_PATH="/media/goncalo/3TBHDD/Joao/Thesis_Joao/blender-4.3.2-linux-x64/blender" 
-RENDER_NUMBER=10 # Number of foreground renders per device
+RENDER_NUMBER=3 # Number of foreground renders per device
+LABEL_FORMAT="full_answers" # "full_answers" or "one_word"
 
 # Image Composer Arguments
 
-COMPOSITION_METHOD="fopa"  # or "random"
+COMPOSITION_METHOD="fopa"  # "fopa" or "random"
 RESULT_DIR="dataset/results/training_set"
-TOTAL_COMPOSITES=10 # Number of total composite/training images (not per device)
+TOTAL_COMPOSITES=3 # Number of total composite/training images (not per device)
 CUDA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES:-"0"}
 
 # Pipeline stage options: 
@@ -66,7 +67,8 @@ run_foreground_generator() {
     python foreground_generator.py \
         -blender_path "$BLENDER_PATH" \
         -display_number "$DISPLAY_NUMBER" \
-        -render_number "$RENDER_NUMBER"
+        -render_number "$RENDER_NUMBER" \
+        -label_format "$LABEL_FORMAT"
     echo 'Foreground Generation Stage Complete! ✅'
 }
 

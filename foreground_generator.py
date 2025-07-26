@@ -24,6 +24,7 @@ if __name__ == "__main__":
     parser.add_argument('-displays_path', type=str, help='Add the path to the displays folder.', dest="displays_path", default='displays')
     parser.add_argument('-display_number', type=int, help='Define number of display images per device.', dest='display_number', default=10)
     parser.add_argument('-render_number', type=int, help='Define number of render images per device.', dest='render_number', default=10)
+    parser.add_argument('-label_format', choices=['full_answers', 'one_word'], required=False, help='Define label format.', dest='label_format', default='full_answers')
     parser.add_argument('-p', '-prob', type=float, help='Add the probability.', dest='prob', default=None)
     args = parser.parse_args()
     blender_path = args.blender_path
@@ -35,6 +36,7 @@ if __name__ == "__main__":
     displays_path = args.displays_path
     display_number = args.display_number
     render_number = args.render_number
+    label_format = args.label_format
     prob = args.prob
 
     rng = np.random.default_rng(seed=42)
@@ -158,8 +160,11 @@ if __name__ == "__main__":
     helper_functions.rename_images_in_folder(output_passes_path)
 
     # ------------------ Label Generation -----------------------
-                
-    labeler.generate_labels(csv_file, mappings_json=roi_filepath, labels_json=f'{foreground_path}/foreground_labels.json', random_generator=rng)
+
+    if label_format == "one_word":
+        labeler.generate_labels(csv_file, mappings_json=roi_filepath, labels_json=f'{foreground_path}/foreground_labels.json', random_generator=rng, one_word_answers=True)
+    else:
+        labeler.generate_labels(csv_file, mappings_json=roi_filepath, labels_json=f'{foreground_path}/foreground_labels.json', random_generator=rng)
 
     print("Label Generation Stage Complete! ✅")    
 

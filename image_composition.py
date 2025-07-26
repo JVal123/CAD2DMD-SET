@@ -283,7 +283,7 @@ def get_pair_fopa(used_combinations_path):
     return pair
 
 
-def get_custom_bbox(net, combinations_path, area_coverage):
+def get_custom_bbox(net, combinations_path, area_coverage, parent_folder):
     '''
     Uses the FOPA Model to extract possible location bounding boxes and then calculates their center. It then uses this coordinate,
     and the aspect ratio of the bounding box of the corresponding foreground object to get tailored bounding boxes, but still centered
@@ -298,7 +298,7 @@ def get_custom_bbox(net, combinations_path, area_coverage):
 
     base_result_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'dataset/results', task_name)
 
-    unique_id = get_next_unique_number()
+    unique_id = get_next_unique_number(counter_file=os.path.join(parent_folder, "unique_id.txt"))
     result_dir = os.path.join(base_result_dir, unique_id)
     os.makedirs(os.path.join(result_dir, 'cache'), exist_ok=True)
     os.makedirs(os.path.join(result_dir, 'heatmap'), exist_ok=True)
@@ -425,13 +425,13 @@ def naive_composition(pair):
 
 def worker_task(args):
     """Worker function using globally initialized model."""
-    worker_id, combinations_json, area_coverage, method = args
+    worker_id, combinations_json, area_coverage, method, parent_folder= args
     global net
     try:
         pair = None
         while pair is None:
             if method == 'fopa':
-                pair = get_custom_bbox(net, combinations_json, area_coverage)
+                pair = get_custom_bbox(net, combinations_json, area_coverage, parent_folder)
             elif method == 'random':
                 pair = get_random_bbox(combinations_json, area_coverage)
             else:
@@ -470,7 +470,8 @@ if __name__ == '__main__':
 
     multiprocessing.set_start_method('spawn')
 
-    combinations_json = 'dataset/used_combinations.json'
+    parent_folder = os.path.abspath(os.path.dirname(result_dir))
+    combinations_json = os.path.join(parent_folder, 'used_combinations.json')
     foreground_labels = helper_functions.load_json(json_file='dataset/foreground/foreground_labels.json')
     training_labels_json = os.path.join(result_dir, 'training_labels.json')
 
@@ -510,7 +511,7 @@ if __name__ == '__main__':
         while successful_count < total_images:
             remaining = total_images - successful_count
             batch_size = min(max_concurrent, remaining)
-            batch_args = [(i, combinations_json, 0.10, method) for i in range(batch_size)]
+            batch_args = [(i, combinations_json, 0.10, method, parent_folder) for i in range(batch_size)]
 
             task_queue = []
             for i, args in enumerate(batch_args):
