@@ -1,4 +1,24 @@
-# Convert labels to LVLM format
+# Create new training labels format without regeneration
+
+To create new training labels in the alternate format without regenerating the entire dataset, you can run this [script](labeler.py).
+
+The process has **2 stages**:
+
+1. Generate the new label format for the foreground object
+
+    ```bash
+    python labeler.py --stage=foreground --mode=one_word --csv_file=dataset/foreground/foreground.csv --foreground_labels_json=dataset/foreground/foreground_labels_short.json
+    ```
+
+2. Use the newly generated foreground labels for the final training label generation
+
+    ```bash
+    python labeler.py --stage=training --csv_file=dataset/results/training_set/training.csv --foreground_labels_json=dataset/foreground/foreground_labels_short.json --training_labels_json=dataset/results/training_set/training_labels_short.json
+    ```
+**Note:** The example provided illustrates how to create **one-word** label answers when the dataset was originally generated using **full-sentence** answers.
+
+
+# Convert training labels for LVLM format
 
 During the finetuning stage, each large vision-language model (LVLM) requires training labels to be structured in a specific format, which often varies across models. To accommodate this diversity, a set of conversion scripts has been developed to transform the labels from the CAD2DMD-SET dataset into the required formats for individual LVLMs. Currently, the framework supports two LVLMs, for which conversion pipelines are readily available:
 
