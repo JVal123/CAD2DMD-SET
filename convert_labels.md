@@ -2,6 +2,14 @@
 
 To create new training labels in the alternate format without regenerating the entire dataset, you can run this [script](labeler.py).
 
+## Arguments
+
+* **stage** - Stage at which labels are generated (foreground vs training).
+* **mode** - Label format (full answer vs one word).
+* **csv_file** - Path to the current stage csv file.
+* **foreground_labels_json** - Path to the foreground labels json file, in the desired format.
+* **training_labels_json** - Path to the training labels json file, in the desired format.
+
 The process has **2 stages**:
 
 1. Generate the new label format for the foreground object
@@ -29,9 +37,9 @@ During the finetuning stage, each large vision-language model (LVLM) requires tr
 
 ## Arguments
 
-* **input_labels** - Path to the training labels json file, from CAD2DMD-SET
-* **output_labels** - Path to the output labels json file, in the LLaVA compatible format
-* **image_dir** - Path to the training set image folder
+* **input_labels** - Path to the training labels json file, from CAD2DMD-SET.
+* **output_labels** - Path to the output labels json file, in the LLaVA compatible format.
+* **image_dir** - Path to the training set image folder.
 
 ### LLaVA
 
