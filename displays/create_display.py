@@ -340,7 +340,7 @@ class DisplayGenerator:
 
 if __name__ == "__main__":
 
-    parser = argparse.ArgumentParser(description='Generates OCR Ready Dataset')
+    parser = argparse.ArgumentParser(description='Generates Synthetic Display Images')
     parser.add_argument('-display_number', type=int, help='Define number of display images per device.', dest='display_number', default=10)
     args = parser.parse_args()
         
