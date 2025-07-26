@@ -36,7 +36,7 @@ In order to use the CAD2DMD-SET tool, you need to run the [run.sh](run.sh) scrip
     ```bash
     CAD2DMD-SET/
     ├── dataset/
-    │   ├── backgroud/  
+    │   ├── background/  
     ```
 
 
