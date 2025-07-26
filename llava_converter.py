@@ -56,13 +56,13 @@ def convert_dataset_for_llava(input_path, output_path, image_folder):
 if __name__=="__main__":
 
     parser = argparse.ArgumentParser(description='Create Json File for LLaVA Fine-tuning')
-    parser.add_argument('-input_path', type=str, help='Add the path to the training labels json file.', dest="input_path", default=None)
-    parser.add_argument('-output_path', type=str, help='Add the path to the output folder.', dest="output_path", default=None)
-    parser.add_argument('-image_folder', type=str, help='Add the path to the image_folder.', dest="image_folder", default=None)
+    parser.add_argument('-input_labels', type=str, help='Add the path to the training labels json file.', dest="input_path", default=None)
+    parser.add_argument('-output_labels', type=str, help='Add the path to the output folder.', dest="output_path", default=None)
+    parser.add_argument('-image_dir', type=str, help='Add the path to the image_folder.', dest="image_folder", default=None)
     args = parser.parse_args()
-    input_path = args.input_path
-    output_path = args.output_path
-    image_folder = args.image_folder
+    input_path = args.input_labels
+    output_path = args.output_labels
+    image_folder = args.image_dir
 
 
     convert_dataset_for_llava(input_path, output_path, image_folder)
