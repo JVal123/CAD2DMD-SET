@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #>>> Conda initialization >>>
-__conda_setup="$('/media/goncalo/3TBHDD/anaconda3/bin/conda' 'shell.bash' 'hook' 2> /dev/null)" # Change conda path
+__conda_setup="$('~/anaconda3/bin/conda' 'shell.bash' 'hook' 2> /dev/null)" # Change conda path
 eval "$__conda_setup"
 # <<< Conda initialization <<<
 
@@ -15,7 +15,7 @@ DISPLAY_NUMBER=3 # Number of display images per device
 
 # Foreground Generator Arguments
 
-BLENDER_PATH="/media/goncalo/3TBHDD/Joao/Thesis_Joao/blender-4.3.2-linux-x64/blender" 
+BLENDER_PATH="~/blender-4.3.2-linux-x64/blender" 
 RENDER_NUMBER=3 # Number of foreground renders per device
 LABEL_FORMAT="full_answers" # "full_answers" or "one_word"
 
