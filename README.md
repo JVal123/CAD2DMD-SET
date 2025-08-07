@@ -24,6 +24,15 @@ conda env create -f blender.yml
 conda env create -f libcom.yml
 ```
 
+3. Clone [libcom](https://github.com/bcmi/libcom) repository to the same parent folder as CAD2DMD-SET, as follows:
+
+```bash
+Parent folder/
+├── CAD2DMD-SET/
+├── libcom/  
+```
+
+
 ## Run
 
 In order to use the CAD2DMD-SET tool, you need to run the [run.sh](run.sh) script. Prior to using it, you should:
