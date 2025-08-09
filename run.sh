@@ -23,6 +23,7 @@ LABEL_FORMAT="full_answers" # "full_answers" or "one_word"
 
 COMPOSITION_METHOD="fopa"  # "fopa" or "random"
 RESULT_DIR="dataset/results/training_set"
+HARMONIZATION="none" # "none" or "color_transfer"
 TOTAL_COMPOSITES=3 # Number of total composite/training images (not per device)
 CUDA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES:-"0"}
 
@@ -78,7 +79,8 @@ run_image_composer() {
     python image_composition.py \
         --method "$COMPOSITION_METHOD" \
         --result_dir "$RESULT_DIR" \
-        --total_images "$TOTAL_COMPOSITES"
+        --total_images "$TOTAL_COMPOSITES" \
+        --harmonization "$HARMONIZATION"
     echo 'Image Composition Stage Complete! ✅'
 }
 

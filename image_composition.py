@@ -410,7 +410,7 @@ def get_random_bbox(combinations_path, area_coverage):
             return pair
 
 
-def naive_composition(pair):
+def naive_composition(pair, harmonization):
 
     bg_img = pair['background']
     fg_img = pair['foreground']
@@ -420,12 +420,15 @@ def naive_composition(pair):
     # Generate composite images by naive methods
     comp_img, comp_mask = get_composite_image(fg_img, fg_mask, bg_img, custom_bbox, 'none')
 
+    if harmonization == "color_transfer":
+        comp_img = color_transfer(comp_img, comp_mask)
+
     return comp_img, comp_mask
 
 
 def worker_task(args):
     """Worker function using globally initialized model."""
-    worker_id, combinations_json, area_coverage, method, parent_folder= args
+    worker_id, combinations_json, area_coverage, method, harmonization, parent_folder = args
     global net
     try:
         pair = None
@@ -437,7 +440,7 @@ def worker_task(args):
             else:
                 raise ValueError(f"Unknown composition method: {method}")
             
-        comp_img, comp_mask = naive_composition(pair)
+        comp_img, comp_mask = naive_composition(pair, harmonization)
         return {
             "comp_img": comp_img,
             "Foreground": os.path.basename(pair["foreground"]),
@@ -460,6 +463,8 @@ if __name__ == '__main__':
                         help='Directory to save composite images and labels')
     parser.add_argument('--total_images', type=int, default=10,
                         help='Total number of images to generate')
+    parser.add_argument('--harmonization', type=str, default="none", choices=["none", "color_transfer"],
+                        help='Apply image harmonization')
 
     args = parser.parse_args()
 
@@ -467,6 +472,7 @@ if __name__ == '__main__':
     result_dir = os.path.abspath(args.result_dir)
     os.makedirs(result_dir, exist_ok=True)
     total_images = args.total_images
+    harmonization = args.harmonization
 
     multiprocessing.set_start_method('spawn')
 
@@ -511,7 +517,7 @@ if __name__ == '__main__':
         while successful_count < total_images:
             remaining = total_images - successful_count
             batch_size = min(max_concurrent, remaining)
-            batch_args = [(i, combinations_json, 0.10, method, parent_folder) for i in range(batch_size)]
+            batch_args = [(i, combinations_json, 0.10, method, harmonization, parent_folder) for i in range(batch_size)]
 
             task_queue = []
             for i, args in enumerate(batch_args):
