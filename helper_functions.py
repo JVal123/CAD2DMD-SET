@@ -386,9 +386,9 @@ def format_dict(data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
             "file_format": "PNG"
         },
         "camera": {
-            "distance": data['Camera Distance'],
-            "shift_x": data['Camera Shift X'],
-            "shift_y": data['Camera Shift Y'],
+            "relative_distance": data['Camera Distance'],
+            "relative_shift_x": data['Camera Shift X'],
+            "relative_shift_y": data['Camera Shift Y'],
             "focal_length": data['Camera Focal Length']
         },
         "object": {
@@ -411,7 +411,7 @@ def format_dict(data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         "motion_blur": motion_blur
     }
             
-    print("Dictionary formatted")
+    #print("Dictionary formatted")
 
     return formatted_data
 

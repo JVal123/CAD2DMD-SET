@@ -228,9 +228,9 @@ class DataGenerator:
         bpy.context.scene.unit_settings.system = 'METRIC'  #Ensure the blender units belong to the metric system (standard is in meters)
         bpy.context.scene.unit_settings.scale_length = 1.0  #Change the scale length to change from meters to another
 
-        distance = dictionary["camera"]["distance"]
-        shift_x = random.uniform(dictionary["camera"]["relative_shift_x"][0], dictionary["camera"]["relative_shift_x"][1]) * distance #Defines a random camera horizontal shift
-        shift_y = random.uniform(dictionary["camera"]["relative_shift_y"][0], dictionary["camera"]["relative_shift_y"][1]) * distance #Defines a random camera vertical shift
+        distance = dictionary["camera"]["relative_distance"]
+        shift_x = dictionary["camera"]["relative_shift_x"]
+        shift_y = dictionary["camera"]["relative_shift_y"]
         camera_settings = bpy.types.Camera(camera.data)
 
         camera_settings.lens_unit = 'MILLIMETERS' #Set the focal length to millimeters
