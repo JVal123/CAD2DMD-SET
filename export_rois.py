@@ -266,104 +266,107 @@ if __name__=="__main__":
     # Output CSV
     columns = ["Image", "Foreground Bbox", "Polygons", "Labels"]
 
-    current_engine = bpy.context.scene.render.engine
-    print("Current render engine:", current_engine)
 
-    # Read foreground.csv
-    with open(foreground_csv, "r", encoding="utf-8") as f:
-        reader = csv.DictReader(f)
-        for row in reader:
-            image_name = row["Image"]
-            device = row["Device"]
-            mode = row["Mode"]
+    if not os.path.exists(foreground_roi_csv): # If the foreground file already exists, skip this step
 
-            # measurements from csv (list)
-            measurement_values = safe_literal_eval(row["Measurement"])
-            if not isinstance(measurement_values, (list, tuple)):
-                measurement_values = [measurement_values]
+        current_engine = bpy.context.scene.render.engine
+        print("Current render engine:", current_engine)
 
-            # roi entry
-            roi_entry = find_roi_entry(roi_dict, device, mode)
-            if roi_entry is None:
-                print(f"[WARN] No ROI entry for {device} / {mode}; skipping {image_name}")
-                continue
+        # Read foreground.csv
+        with open(foreground_csv, "r", encoding="utf-8") as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                image_name = row["Image"]
+                device = row["Device"]
+                mode = row["Mode"]
 
-            measurement_rois = roi_entry.get("rois", [])
-            ocr_dict = roi_entry.get("ocr", {})
-            ocr_rois = ocr_dict.get("rois", [])
-            ocr_labels = ocr_dict.get("labels", [])
-            all_rois = measurement_rois + ocr_rois
-            all_labels = measurement_values +  ocr_labels
+                # measurements from csv (list)
+                measurement_values = safe_literal_eval(row["Measurement"])
+                if not isinstance(measurement_values, (list, tuple)):
+                    measurement_values = [measurement_values]
 
-            display_img_name = roi_entry.get("image", None)
-            img_path = os.path.join("displays/images/real", device, display_img_name)
-            img = cv2.imread(img_path)
-            img_h ,img_w = img.shape[:2]
+                # roi entry
+                roi_entry = find_roi_entry(roi_dict, device, mode)
+                if roi_entry is None:
+                    print(f"[WARN] No ROI entry for {device} / {mode}; skipping {image_name}")
+                    continue
 
-    
-            model_path = os.path.join(render_generator.models_folder, f"{device}.blend")
+                measurement_rois = roi_entry.get("rois", [])
+                ocr_dict = roi_entry.get("ocr", {})
+                ocr_rois = ocr_dict.get("rois", [])
+                ocr_labels = ocr_dict.get("labels", [])
+                all_rois = measurement_rois + ocr_rois
+                all_labels = measurement_values +  ocr_labels
 
-            # Open the .blend file
-            bpy.ops.wm.open_mainfile(filepath=model_path)
-            scene = bpy.context.scene
-            render = scene.render
-            camera = bpy.data.objects.get("Camera")
-            object = bpy.data.objects['3DModel']
-            depsgraph = bpy.context.evaluated_depsgraph_get()
-            obj_eval = object.evaluated_get(depsgraph)
+                display_img_name = roi_entry.get("image", None)
+                img_path = os.path.join("displays/images/real", device, display_img_name)
+                img = cv2.imread(img_path)
+                img_h ,img_w = img.shape[:2]
 
-            row_info = helper_functions.get_image_data(foreground_csv, image_name)
-            row_parameters =  helper_functions.format_dict(row_info)
-            render_generator.set_render_settings(row_parameters)
+        
+                model_path = os.path.join(render_generator.models_folder, f"{device}.blend")
 
-            initial_rotation = copy.deepcopy(object.rotation_euler)
+                # Open the .blend file
+                bpy.ops.wm.open_mainfile(filepath=model_path)
+                scene = bpy.context.scene
+                render = scene.render
+                camera = bpy.data.objects.get("Camera")
+                object = bpy.data.objects['3DModel']
+                depsgraph = bpy.context.evaluated_depsgraph_get()
+                obj_eval = object.evaluated_get(depsgraph)
 
-            camera_distance, shift_x, shift_y, focal_length = render_generator.force_translate(camera, object, row_parameters)
-            x_rotation, y_rotation, z_rotation, neg_case_rotation = render_generator.force_rotate(object, initial_rotation, row_parameters)
+                row_info = helper_functions.get_image_data(foreground_csv, image_name)
+                row_parameters =  helper_functions.format_dict(row_info)
+                render_generator.set_render_settings(row_parameters)
 
-            foreground_bbox = get_object_bbox(scene, camera, obj_eval) #Bbox coordinates of the foreground object
+                initial_rotation = copy.deepcopy(object.rotation_euler)
 
-            if neg_case_rotation:
-                row = {"Image": image_name, "Foreground Bbox": foreground_bbox, "Polygons": [], "Labels": ""}
+                camera_distance, shift_x, shift_y, focal_length = render_generator.force_translate(camera, object, row_parameters)
+                x_rotation, y_rotation, z_rotation, neg_case_rotation = render_generator.force_rotate(object, initial_rotation, row_parameters)
+
+                foreground_bbox = get_object_bbox(scene, camera, obj_eval) #Bbox coordinates of the foreground object
+
+                if neg_case_rotation:
+                    row = {"Image": image_name, "Foreground Bbox": foreground_bbox, "Polygons": [], "Labels": ""}
+                    helper_functions.write_to_csv(foreground_roi_csv, row, columns)
+                    continue
+
+                point_coords = []
+                roi_coords = []
+                roi_labels = []
+
+                display_image_2d_points = [[0, 0], [img_w-1, 0], [img_w-1, img_h-1], [0, img_h-1]]
+
+                # --------- Convert 3D local display points to 2D foreground image points -------------------
+
+                for point_co in face_vertices[device]:
+                    
+                    point_world = obj_eval.matrix_world @ Vector(point_co)
+        
+                    # Convert to normalized camera coordinates
+                    co_ndc = bpy_extras.object_utils.world_to_camera_view(scene, camera, point_world)
+
+                    # co_ndc is in [0, 1] range: (x, y, depth)
+                    # To get pixel coordinates:
+                    px = int(co_ndc.x * render.resolution_x)
+                    py = int((1 - co_ndc.y) * render.resolution_y)
+
+                    point_coords.append([px, py])
+
+                foreground_homog_matrix = compute_homography(src_roi=display_image_2d_points, dst_roi=point_coords) # Calculate corresponding homography matrix
+
+                # --------- Map 2D rois from display image to foreground image -------------------
+
+                for image_roi in all_rois:
+                    formatted_roi = format_roi(image_roi, format="xywh")
+                    foreground_roi = apply_homography(foreground_homog_matrix, formatted_roi)
+                    roi_coords.append(foreground_roi)
+
+                # ------- Associate labels to obtained rois and save information to csv file --------------------------
+
+                row = {"Image": image_name, "Foreground Bbox": foreground_bbox, "Polygons": roi_coords, "Labels": all_labels}
+
                 helper_functions.write_to_csv(foreground_roi_csv, row, columns)
-                continue
-
-            point_coords = []
-            roi_coords = []
-            roi_labels = []
-
-            display_image_2d_points = [[0, 0], [img_w-1, 0], [img_w-1, img_h-1], [0, img_h-1]]
-
-            # --------- Convert 3D local display points to 2D foreground image points -------------------
-
-            for point_co in face_vertices[device]:
-                
-                point_world = obj_eval.matrix_world @ Vector(point_co)
-    
-                # Convert to normalized camera coordinates
-                co_ndc = bpy_extras.object_utils.world_to_camera_view(scene, camera, point_world)
-
-                # co_ndc is in [0, 1] range: (x, y, depth)
-                # To get pixel coordinates:
-                px = int(co_ndc.x * render.resolution_x)
-                py = int((1 - co_ndc.y) * render.resolution_y)
-
-                point_coords.append([px, py])
-
-            foreground_homog_matrix = compute_homography(src_roi=display_image_2d_points, dst_roi=point_coords) # Calculate corresponding homography matrix
-
-            # --------- Map 2D rois from display image to foreground image -------------------
-
-            for image_roi in all_rois:
-                formatted_roi = format_roi(image_roi, format="xywh")
-                foreground_roi = apply_homography(foreground_homog_matrix, formatted_roi)
-                roi_coords.append(foreground_roi)
-
-            # ------- Associate labels to obtained rois and save information to csv file --------------------------
-
-            row = {"Image": image_name, "Foreground Bbox": foreground_bbox, "Polygons": roi_coords, "Labels": all_labels}
-
-            helper_functions.write_to_csv(foreground_roi_csv, row, columns)
 
     
     
