@@ -1,13 +1,6 @@
 """
 Visualize foreground ROI polygons + labels on top of rendered images.
 
-Usage:
-  python visualize_foreground_rois.py \
-    --csv dataset/foreground_polygons.csv \
-    --images_root dataset/foreground/images \
-    --out_dir dataset/foreground/viz \
-    [--show] [--line_thickness 2] [--font_scale 0.6]
-
 Notes:
 - Assumes the CSV has columns: Image, Polygons, Labels
 - Polygons is a JSON list of 4-point polygons in pixel coords:
@@ -133,12 +126,12 @@ def main():
 
                 tl = tuple(pts[0,0].tolist())
                 label_text = str(labels[i]) if i < len(labels) and labels[i] is not None else f"ROI {i}"
-                draw_label_with_bg(
-                    img, label_text, (tl[0], max(0, tl[1]-4)),
-                    font=font, font_scale=font_scale,
-                    txt_color=(255,255,255), bg_color=(0,0,0),
-                    thickness=label_thickness, pad=3
-                )
+                #draw_label_with_bg(
+                #    img, label_text, (tl[0], max(0, tl[1]-4)),
+                #    font=font, font_scale=font_scale,
+                #    txt_color=(255,255,255), bg_color=(0,0,0),
+                #    thickness=label_thickness, pad=3
+                #)
 
             out_path = os.path.join(args.out_dir,
                                     os.path.splitext(os.path.basename(image_name))[0] + "_viz.png")
