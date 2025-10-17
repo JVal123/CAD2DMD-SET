@@ -243,7 +243,7 @@ def get_object_bbox(scene, camera, obj_eval, clamp=True):
 if __name__=="__main__":
 
     parser = argparse.ArgumentParser(description='Extracts Foreground ROIs.')
-    parser.add_argument('--blender_path', type=str, help='Add the path to blender.', default="/media/goncalo/3TBHDD/Joao/Thesis_Joao/blender-4.3.2-linux-x64/blender")
+    parser.add_argument('--blender_path', type=str, help='Add the path to blender.', default="~/blender-4.3.2-linux-x64/blender")
     parser.add_argument('--foreground_dir', type=str, help='Add the path to the foreground image folder.', default='dataset/foreground')
     parser.add_argument('--composite_dir', type=str, help='Add the path to the composite image folder.', default='dataset/results/training_set')
     parser.add_argument('--face_vertices_json', type=str, help='Add the path to the face vertices json file.', default='models/vertex_coords.json')

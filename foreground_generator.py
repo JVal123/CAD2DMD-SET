@@ -15,7 +15,7 @@ import labeler
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description='Generates OCR Ready Dataset')
-    parser.add_argument('-blender_path', type=str, help="Add the path to blender", dest="blender_path", default="/media/goncalo/3TBHDD/Joao/Thesis_Joao/blender-4.3.2-linux-x64/blender")
+    parser.add_argument('-blender_path', type=str, help="Add the path to blender", dest="blender_path", default="~/blender-4.3.2-linux-x64/blender")
     parser.add_argument('-dataset_path', type=str, help='Add the path to the dataset folder.', dest="dataset_path", default='dataset')
     parser.add_argument('-foreground_path', type=str, help='Add the path to the foreground images.', dest="foreground_path", default='dataset/foreground')
     parser.add_argument('-background_path', type=str, help='Add the path to the background images.', dest="background_path", default='dataset/background')
