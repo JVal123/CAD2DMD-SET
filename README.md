@@ -1,6 +1,6 @@
 # CAD2DMD-SET
 
-Synthetic Generation Tool of Digital Measurement Device CAD Model Datasets for finetuning Large Vision-Language Models. [[Paper]]()
+Synthetic Generation Tool of Digital Measurement Device CAD Model Datasets for finetuning Large Vision-Language Models. [[Paper]](https://arxiv.org/abs/2508.21732)
 
 ## Prerequisites
 
