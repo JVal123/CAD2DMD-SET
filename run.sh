@@ -16,15 +16,16 @@ DISPLAY_NUMBER=3 # Number of display images per device
 # Foreground Generator Arguments
 
 BLENDER_PATH="~/blender-4.3.2-linux-x64/blender" 
-RENDER_NUMBER=3 # Number of foreground renders per device
+RENDER_NUMBER=667 # Number of foreground renders per device
 LABEL_FORMAT="full_answers" # "full_answers" or "one_word"
+MB_PROB=0.5 # Motion blur probability
 
 # Image Composer Arguments
 
 COMPOSITION_METHOD="fopa"  # "fopa" or "random"
 RESULT_DIR="dataset/results/training_set"
 HARMONIZATION="none" # "none" or "color_transfer"
-TOTAL_COMPOSITES=3 # Number of total composite/training images (not per device)
+TOTAL_COMPOSITES=30 # Number of total composite/training images (not per device)
 CUDA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES:-"0"}
 
 # Pipeline stage options: 
@@ -69,7 +70,8 @@ run_foreground_generator() {
         -blender_path "$BLENDER_PATH" \
         -display_number "$DISPLAY_NUMBER" \
         -render_number "$RENDER_NUMBER" \
-        -label_format "$LABEL_FORMAT"
+        -label_format "$LABEL_FORMAT" \
+        -prob "$MB_PROB"
     echo 'Foreground Generation Stage Complete! ✅'
 }
 
