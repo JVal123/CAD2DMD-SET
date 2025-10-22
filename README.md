@@ -111,5 +111,13 @@ If you want to add a new device, please check our [guide](add_device.md).
 If you find CAD2DMD-SET useful for your research and applications, please cite using this BibTeX:
 
 ```BibTeX
-
+@misc{valente2025cad2dmdsetsyntheticgenerationtool,
+      title={CAD2DMD-SET: Synthetic Generation Tool of Digital Measurement Device CAD Model Datasets for fine-tuning Large Vision-Language Models}, 
+      author={João Valente and Atabak Dehban and Rodrigo Ventura},
+      year={2025},
+      eprint={2508.21732},
+      archivePrefix={arXiv},
+      primaryClass={cs.CV},
+      url={https://arxiv.org/abs/2508.21732}, 
+}
 ```
