@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Your Project Title</title>
+  <style>
+    :root {
+      --primary: #1976d2;  
+      --secondary: #2196f3; 
+      --accent: #64b5f6;    
+      --light-gray: #f5faff; 
+      --text-color: #222;
+      --border-radius: 10px;
+      --border-radius: 10px;
+    }
+
+    body {
+      font-family: "Helvetica Neue", Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      background: var(--light-gray);
+      color: var(--text-color);
+      line-height: 1.6;
+    }
+
+    header {
+      background: var(--primary);
+      color: white;
+      text-align: center;
+      padding: 3rem 1rem 2rem;
+    }
+
+    header h1 {
+      margin: 0;
+      font-size: 2.5rem;
+    }
+
+    header p {
+      margin: 0.5rem 0 0;
+      font-size: 1.1rem;
+    }
+
+    nav {
+      margin-top: 1rem;
+    }
+
+    nav a {
+      color: white;
+      text-decoration: none;
+      margin: 0 0.75rem;
+      background: var(--secondary);
+      padding: 0.5rem 1rem;
+      border-radius: var(--border-radius);
+      transition: background 0.3s;
+    }
+
+    nav a:hover {
+      background: var(--accent);
+    }
+
+    main {
+      max-width: 900px;
+      margin: 2rem auto;
+      background: white;
+      border-radius: var(--border-radius);
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+      padding: 2rem;
+    }
+
+    section {
+      margin-bottom: 2rem;
+    }
+
+    section h2 {
+      color: var(--secondary);
+      border-bottom: 2px solid var(--secondary);
+      padding-bottom: 0.3rem;
+      margin-bottom: 1rem;
+    }
+
+    .authors {
+      text-align: center;
+      margin-bottom: 1.5rem;
+      font-style: italic;
+    }
+
+    .image-container {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem;
+      justify-content: center;
+    }
+
+    .image-container img {
+      max-width: 100%;
+      border-radius: var(--border-radius);
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    }
+
+    figure {
+      text-align: center;
+    }
+
+    figcaption {
+      font-size: 0.9rem;
+      color: #555;
+      margin-top: 0.4rem;
+      font-style: italic;
+    }
+
+    pre {
+      background: #f0f0f0;
+      padding: 1rem;
+      border-radius: var(--border-radius);
+      overflow-x: auto;
+    }
+
+    .resources a {
+      display: inline-block;
+      margin-right: 1rem;
+      text-decoration: none;
+      color: var(--secondary);
+      font-weight: bold;
+    }
+
+    .resources a:hover {
+      color: var(--accent);
+    }
+
+    footer {
+      text-align: center;
+      padding: 1rem;
+      background: var(--primary);
+      color: white;
+      font-size: 0.9rem;
+      margin-top: 2rem;
+    }
+
+    footer a {
+      color: #ffeb3b;
+      text-decoration: none;
+    }
+
+    footer a:hover {
+      text-decoration: underline;
+    }
+
+    @media (max-width: 600px) {
+      header h1 {
+        font-size: 1.8rem;
+      }
+      nav a {
+        display: inline-block;
+        margin: 0.3rem 0.5rem;
+      }
+      main {
+        padding: 1.5rem;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>CAD2DMD-SET: Synthetic Dataset Generator of Digital Measurement Devices</h1>
+    <p>João Valente<sup>1</sup>, Atabak Dehban<sup>1</sup>, Rodrigo Ventura<sup>1</sup></p>
+    <p><sup>1</sup>Institute For Systems and Robotics, Lisbon, Portugal</p>
+
+    <nav>
+      <a href="#abstract">Abstract</a>
+      <a href="#figures">Figures</a>
+      <a href="#bibtex">BibTeX</a>
+      <a href="#resources">Resources</a>
+    </nav>
+  </header>
+
+  <main>
+    <section id="abstract">
+      <h2>Abstract</h2>
+      <p>
+        Although recent advancements in Large Vision-Language Models (LVLMs) have demonstrated impres
+        sive capabilities across various multimodal tasks, they still struggle with seemingly simple scenarios
+        such as reading values from Digital Measurement Devices (DMDs), particularly in real-world condi
+        tions involving clutter, occlusions, extreme viewpoints, and motion blur; common in head-mounted cam
+        eras and Augmented Reality (AR) applications used in industrial settings. Although Optical Character
+        Recognition (OCR) models differ from LVLMs in architecture and modality integration, they exhibit sim
+        ilar challenges when confronted with these visually complex real-world conditions. Motivated by these
+        limitations, this work introduces CAD2DMD-SET, a synthetic data generation tool designed for OCR and
+        Visual Question Answering (VQA) tasks involving DMDs. By leveraging 3D CAD models, advanced
+        rendering, and high-fidelity image composition, our tool produces diverse, OCR and VQA-labelled syn
+        thetic DMD datasets suitable for fine-tuning OCR models and LVLMs, respectively. Additionally, we
+        present DMDBench, a curated validation set of 1,000 annotated real-world images designed to evaluate
+        model performance under practical constraints. Benchmarking three state-of-the-art LVLMs using Aver
+        age Normalised Levenshtein Similarity (ANLS) and further fine-tuning Low-Rank Adaptations (LoRAs)
+        of two of these models with CAD2DMD-SET's generated dataset yielded substantial improvements, with
+        InternVL2.5-26B showcasing a score increase of 200% without degrading on other tasks. Further exper
+        iments on DMDBench confirmed their strong capacity for numeric and unit interpretation and ablation
+        studies highlighted the influence of dataset design choices on performance. OCR benchmarking re
+        vealed substantial improvements in model performance when trained on synthetic data. Overall, LVLMs
+        outperformed OCR models in numeric tasks, reflecting their broader reasoning capabilities.
+        The CAD2DMD-SET tool was released as open-source.
+    </section>
+
+
+    <section id="figures">
+      <h2>Figures</h2>
+      <div class="image-container">
+        <figure>
+        <img src="figures/tool.png" alt="CAD2DMD-SET Pipeline- Pulse Oximeter Example.">
+        <figcaption><strong>Figure 1:</strong> CAD2DMD-SET Pipeline- Pulse Oximeter Example.</figcaption>
+        </figure>
+
+        <figure>
+        <img src="figures/examples_ocr.png" alt="Generated Image Examples (bounding boxes are used for OCR model training).">
+        <figcaption><strong>Figure 2:</strong> Generated Image Examples (bounding boxes are used for OCR model training).</figcaption>
+        </figure>
+
+        <figure>
+        <img src="figures/examples_lvlms" alt="Generated Image Examples (QA pairs are used for LVLM fine-tuning).">
+        <figcaption><strong>Figure 2:</strong> Generated Image Examples (QA pairs are used for LVLM fine-tuning).</figcaption>
+        </figure>
+    </div>
+    </section>
+
+
+    <section id="bibtex">
+      <h2>BibTeX</h2>
+      <pre>
+@article{valente2025cad2dmd,
+  title={CAD2DMD-SET: Synthetic Generation Tool of Digital Measurement Device CAD Model Datasets for fine-tuning Large Vision-Language Models},
+  author={Valente, Jo{\~a}o and Dehban, Atabak and Ventura, Rodrigo},
+  journal={arXiv preprint arXiv:2508.21732},
+  year={2025}
+}
+      </pre>
+    </section>
+
+    <section id="resources" class="resources">
+      <h2>Resources & Links</h2>
+      <p>
+        <a href="https://github.com/JVal123/CAD2DMD-SET.git" target="_blank">🔗 GitHub Repository</a>
+        <a href="https://arxiv.org/abs/2508.21732" target="_blank">📄 Paper on arXiv</a>
+        <!-- <a href="https://yourwebsite.com/demo" target="_blank">🧪 Live Demo</a> -->
+      </p>
+    </section>
+  </main>
+
+  <footer>
+    &copy; 2025 <a href="https://github.com/JVal123" target="_blank">João Valente</a>. Open-source under the MIT License.
+  </footer>
+
+</body>
+</html>
